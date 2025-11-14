@@ -1,0 +1,31 @@
+From 7f5d94d942a29edbd8704f58d945bc9a1293f958 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Fri, 14 Nov 2025 14:14:14 +0100
+Subject: [PATCH 3/5] composable_kernel: support gfx1103
+
+---
+ projects/composablekernel/CMakeLists.txt | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/projects/composablekernel/CMakeLists.txt b/projects/composablekernel/CMakeLists.txt
+index 049da5637f..df6e0a775a 100644
+--- a/projects/composablekernel/CMakeLists.txt
++++ b/projects/composablekernel/CMakeLists.txt
+@@ -194,11 +194,11 @@ message(STATUS "checking which targets are supported")
+ if(NOT ENABLE_ASAN_PACKAGING)
+     if(NOT WIN32 AND ${hip_VERSION_FLAT} LESS 600300000)
+         # WORKAROUND: compiler does not yet fully support gfx12 targets, need to fix version above
+-        set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102")
++        set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1103")
+     elseif(NOT WIN32 AND ${hip_VERSION_FLAT} GREATER_EQUAL 600300000 AND ${hip_VERSION_FLAT} LESS 600400000)
+-        set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201")
++        set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1103;gfx1200;gfx1201")
+     elseif(NOT WIN32 AND ${hip_VERSION_FLAT} GREATER_EQUAL 600400000 AND ${hip_VERSION_FLAT} LESS 600443483)
+-        set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx950")
++        set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1103;gfx1200;gfx1201;gfx950")
+     elseif(NOT WIN32 AND ${hip_VERSION_FLAT} GREATER_EQUAL 600443483)
+         set(CK_GPU_TARGETS "gfx908;gfx90a;gfx942;gfx950;gfx10-3-generic;gfx11-generic;gfx12-generic")
+     endif()
+-- 
+2.47.3
+

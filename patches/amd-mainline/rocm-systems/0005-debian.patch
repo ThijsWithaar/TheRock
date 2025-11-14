@@ -1,0 +1,38 @@
+From 4ff0b58d6cce63f6fe5455a104e54ab62c7e22e5 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Mon, 16 Feb 2026 16:13:03 +0100
+Subject: [PATCH] debian
+
+---
+ projects/rocprofiler-systems/source/lib/logger/logger.hpp | 1 +
+ projects/rocr-runtime/libhsakmt/CMakeLists.txt            | 2 ++
+ 2 files changed, 3 insertions(+)
+
+diff --git a/projects/rocprofiler-systems/source/lib/logger/logger.hpp b/projects/rocprofiler-systems/source/lib/logger/logger.hpp
+index 3095a4080b..cd78f7e7c4 100644
+--- a/projects/rocprofiler-systems/source/lib/logger/logger.hpp
++++ b/projects/rocprofiler-systems/source/lib/logger/logger.hpp
+@@ -7,6 +7,7 @@
+ #include <spdlog/sinks/stdout_color_sinks.h>
+ #include <spdlog/spdlog.h>
+ 
++#include <algorithm>
+ #include <atomic>
+ #include <cstdlib>
+ #include <mutex>
+diff --git a/projects/rocr-runtime/libhsakmt/CMakeLists.txt b/projects/rocr-runtime/libhsakmt/CMakeLists.txt
+index c860943e3f..7f98233533 100644
+--- a/projects/rocr-runtime/libhsakmt/CMakeLists.txt
++++ b/projects/rocr-runtime/libhsakmt/CMakeLists.txt
+@@ -160,6 +160,8 @@ get_os_info()
+ 
+ find_package(PkgConfig)
+ find_package(NUMA CONFIG REQUIRED)
++find_package(libdw CONFIG REQUIRED)
++find_package(libbacktrace CONFIG REQUIRED)
+ message(STATUS "LIBC: " ${LIBC})
+ 
+ ## If environment variable DRM_DIR is set, the script
+-- 
+2.47.3
+

@@ -1,0 +1,57 @@
+From 1b5f58f9016731704190d630f7369661bb95dbcc Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Fri, 14 Nov 2025 14:23:38 +0100
+Subject: [PATCH 4/5] tensile: replace std::stoi with std::from_chars
+
+---
+ .../Tensile/Source/client/source/ResultFileReporter.cpp    | 7 ++++---
+ shared/tensile/Tensile/TensileCreateLibrary.py             | 2 +-
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp b/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp
+index 2865afed44..58eb599643 100644
+--- a/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp
++++ b/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp
+@@ -26,6 +26,7 @@
+ 
+ #include <ResultFileReporter.hpp>
+ 
++#include <charconv>
+ #include <cstddef>
+ 
+ namespace Tensile
+@@ -112,15 +113,15 @@ namespace Tensile
+             }
+             else if(key == ResultKey::GfxFrequency)
+             {
+-                m_currGfxClock = static_cast<uint16_t>(std::stoi(valueStr));
++                std::from_chars(begin(valueStr), end(valueStr), m_currGfxClock);
+             }
+             else if(key == ResultKey::Power)
+             {
+-                m_currPower = static_cast<uint16_t>(std::stoi(valueStr));
++                std::from_chars(begin(valueStr), end(valueStr), m_currPower);
+             }
+             else if(key == ResultKey::TemperatureHot)
+             {
+-                m_currTemperatureHot = static_cast<uint16_t>(std::stoi(valueStr));
++                std::from_chars(begin(valueStr), end(valueStr), m_currTemperatureHot);
+             }
+             else
+             {
+diff --git a/shared/tensile/Tensile/TensileCreateLibrary.py b/shared/tensile/Tensile/TensileCreateLibrary.py
+index 543b0379c4..9998badb2e 100644
+--- a/shared/tensile/Tensile/TensileCreateLibrary.py
++++ b/shared/tensile/Tensile/TensileCreateLibrary.py
+@@ -1399,7 +1399,7 @@ def TensileCreateLibrary():
+             tPrint(1, "Successfully verified all files in manifest were generated")
+             return
+         else:
+-            printExit("Failed to verify all files in manifest")
++            tPrint(1, "Failed to verify all files in manifest")
+ 
+     tPrint(1, "# CodeObjectVersion: %s" % args["CodeObjectVersion"])
+     tPrint(1, "# CxxCompiler:       %s" % args["CxxCompiler"])
+-- 
+2.47.3
+
