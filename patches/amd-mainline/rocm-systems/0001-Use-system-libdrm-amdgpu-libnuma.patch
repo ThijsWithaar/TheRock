@@ -1,0 +1,64 @@
+From 12e0b2cb5513321ad555d673238a2ee11d41ad05 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 18 Oct 2026 21:57:12 +0200
+Subject: [PATCH] Use system libdrm-amdgpu, libnuma
+
+---
+ projects/rocdecode/cmake/FindLibdrm_amdgpu.cmake         | 4 ++--
+ projects/rocjpeg/CMakeLists.txt                          | 2 +-
+ projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt | 4 +++-
+ 3 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/projects/rocdecode/cmake/FindLibdrm_amdgpu.cmake b/projects/rocdecode/cmake/FindLibdrm_amdgpu.cmake
+index eb4e313b20..b4b7faf448 100644
+--- a/projects/rocdecode/cmake/FindLibdrm_amdgpu.cmake
++++ b/projects/rocdecode/cmake/FindLibdrm_amdgpu.cmake
+@@ -27,8 +27,8 @@ if(DEFINED THEROCK_SUPERPROJECT_INCLUDE_DIRS)
+   list(APPEND _libdrm_amdgpu_library_hints ${CMAKE_LIBRARY_PATH})
+ endif()
+ 
+-find_library(LIBDRM_AMDGPU_LIBRARY NAMES drm_amdgpu HINTS ${_libdrm_amdgpu_library_hints} ${ROCM_PATH}/lib/rocm_sysdeps/lib NO_DEFAULT_PATH)
+-find_path(LIBDRM_AMDGPU_INCLUDE_DIR NAMES libdrm/amdgpu.h libdrm/amdgpu_drm.h PATHS ${_libdrm_amdgpu_include_hints} ${ROCM_PATH}/lib/rocm_sysdeps/include NO_DEFAULT_PATH)
++find_library(LIBDRM_AMDGPU_LIBRARY NAMES drm_amdgpu HINTS ${_libdrm_amdgpu_library_hints} ${ROCM_PATH}/lib/rocm_sysdeps/lib)
++find_path(LIBDRM_AMDGPU_INCLUDE_DIR NAMES libdrm/amdgpu.h libdrm/amdgpu_drm.h PATHS ${_libdrm_amdgpu_include_hints} ${ROCM_PATH}/lib/rocm_sysdeps/include)
+ 
+ include(FindPackageHandleStandardArgs)
+ find_package_handle_standard_args(Libdrm_amdgpu DEFAULT_MSG LIBDRM_AMDGPU_INCLUDE_DIR LIBDRM_AMDGPU_LIBRARY)
+diff --git a/projects/rocjpeg/CMakeLists.txt b/projects/rocjpeg/CMakeLists.txt
+index 0291fe1881..36ea97086f 100644
+--- a/projects/rocjpeg/CMakeLists.txt
++++ b/projects/rocjpeg/CMakeLists.txt
+@@ -146,7 +146,7 @@ option(ROCJPEG_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support"
+ set (HIP_PLATFORM amd CACHE STRING "HIP platform")
+ find_package(HIP QUIET)
+ find_package(Libva QUIET)
+-find_package(Libdrm_amdgpu QUIET)
++find_package(Libdrm_amdgpu REQUIRED)
+ find_package(Threads QUIET)
+ 
+ if(ROCJPEG_ENABLE_ROCPROFILER_REGISTER)
+diff --git a/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt b/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt
+index b89cc46b00..2fa661da46 100644
+--- a/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt
++++ b/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt
+@@ -93,6 +93,8 @@ if(NOT LibElf_FOUND)
+   find_package(LibElf REQUIRED)
+ endif()
+ 
++find_package(NUMA REQUIRED)
++
+ ## Find AMD CUID library.
+ set(AMDCUID_ROOT "/opt/amdcuid" CACHE PATH "Path to AMDCUID installation")
+ find_library(AMDCUID_LIB
+@@ -380,7 +382,7 @@ if(${IMAGE_SUPPORT})
+ endif()
+ 
+ if (UNIX)
+-  target_link_libraries ( ${CORE_RUNTIME_TARGET} PRIVATE elf::elf dl pthread rt )
++  target_link_libraries ( ${CORE_RUNTIME_TARGET} PRIVATE elf::elf dl pthread rt ${NUMA_LIBRARIES})
+ else()
+   target_link_libraries ( ${CORE_RUNTIME_TARGET} PRIVATE Ws2_32 )
+   target_link_directories(${CORE_RUNTIME_TARGET} PRIVATE ${DXCORE_LIB_PATH})
+-- 
+2.47.3
+

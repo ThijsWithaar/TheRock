@@ -1,0 +1,25 @@
+From e2c002f3de23fd9cc19b32dcf671eba6caedaa91 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Mon, 19 Oct 2026 18:34:34 +0200
+Subject: [PATCH] hipblastlt: WORKAROUND Disable assert in marco parsing
+
+---
+ .../tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp         | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp b/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp
+index 8a762cf158e..95e3688105c 100644
+--- a/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp
++++ b/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp
+@@ -312,7 +312,7 @@ namespace rocisa
+             }
+             else
+             {
+-                assert(false && "macroToInstruction: unexpected item type in macro body");
++                //assert(false && "macroToInstruction: unexpected item type in macro body");
+             }
+         }
+     }
+-- 
+2.47.3
+

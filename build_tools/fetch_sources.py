@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright Advanced Micro Devices, Inc.
 # SPDX-License-Identifier: MIT
 
@@ -502,6 +502,7 @@ def run(args):
     submodule_paths = ALWAYS_SUBMODULE_PATHS + [
         get_submodule_path(project) for project in projects
     ]
+    submodule_paths.extend(['ml-libs/hipfire', 'ml-libs/jax', 'ml-libs/pytorch', 'ml-libs/xla'])
     # TODO(scotttodd): Check for git lfs?
     update_args = []
     if args.depth:

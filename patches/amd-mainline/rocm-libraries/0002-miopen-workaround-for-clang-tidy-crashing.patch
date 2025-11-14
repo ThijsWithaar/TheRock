@@ -1,0 +1,38 @@
+From 6c141ed412de2eb13da7288f0ae0be6fe51d644a Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 18 Oct 2026 17:31:34 +0200
+Subject: [PATCH 2/2] workaround for clang-tidy crashing
+
+---
+ projects/miopen/CMakeLists.txt | 15 ++-------------
+ 1 file changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/projects/miopen/CMakeLists.txt b/projects/miopen/CMakeLists.txt
+index e7647329271..70b394d5f58 100644
+--- a/projects/miopen/CMakeLists.txt
++++ b/projects/miopen/CMakeLists.txt
+@@ -817,19 +817,8 @@ endif()
+ 
+ include(ClangTidy)
+ # TODO: Remove the -nogpulib workaround once clang-tidy version is bumped to clang-tidy-23+
+-enable_clang_tidy(
+-    CHECKS
+-        ${MIOPEN_TIDY_CHECKS}
+-    ${MIOPEN_TIDY_ERRORS}
+-    HEADER_FILTER
+-        "\.hpp$"
+-    EXTRA_ARGS
+-        -DMIOPEN_USE_CLANG_TIDY
+-        # Clang 21 cannot pass AMDGCN builtins as arguments to the HIP header feature probe.
+-        -D__builtin_amdgcn_is_invocable=__has_builtin
+-        -D__builtin_elementwise_exp10=__builtin_elementwise_exp
+-        -nogpulib
+-)
++function(clang_tidy_check a)
++endfunction()
+ 
+ include(CppCheck)
+ enable_cppcheck(
+-- 
+2.47.3
+
