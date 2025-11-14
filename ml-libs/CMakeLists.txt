@@ -106,8 +106,11 @@ if(THEROCK_ENABLE_HIPDNN)
       therock_explicit_finders.cmake
     COMPILER_TOOLCHAIN
       amd-hip
+#    IGNORE_PACKAGES
+#      fmt
     BUILD_DEPS
       therock-googletest
+#      ${THEROCK_BUNDLED_FMT}
       therock-fmt
       therock-spdlog
       therock-flatbuffers

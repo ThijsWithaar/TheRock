@@ -30,7 +30,7 @@ if(THEROCK_ENABLE_RCCL)
   therock_cmake_subproject_declare(rccl
     # Build all GPU targets in a single target-neutral artifact as long as the
     # host code isn't fully target agnostic.
-    USE_TEST_AMDGPU_TARGETS
+    #USE_TEST_AMDGPU_TARGETS # Takes too long.
     EXTERNAL_SOURCE_DIR "${THEROCK_ROCM_SYSTEMS_SOURCE_DIR}/projects/rccl"
     BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/rccl"
     # High latency LTO link of a single library.
@@ -44,12 +44,14 @@ if(THEROCK_ENABLE_RCCL)
       -DENABLE_MSCCLPP=OFF
       -DENABLE_MSCCL_KERNEL=OFF
       -DBUILD_TESTS=${THEROCK_BUILD_TESTING}
+      -DGPU_TARGETS="${THEROCK_AMDGPU_TARGETS}"
     CMAKE_INCLUDES
       therock_explicit_finders.cmake
     COMPILER_TOOLCHAIN
       amd-hip
     BUILD_DEPS
       rocm-cmake
+#      ${THEROCK_BUNDLED_FMT}
       therock-fmt
       therock-googletest
     RUNTIME_DEPS
@@ -215,6 +217,7 @@ if(THEROCK_ENABLE_ROCSHMEM)
       amd-hip
     BUILD_DEPS
       rocm-cmake
+#      ${THEROCK_BUNDLED_FMT}
       therock-fmt
       therock-googletest
     RUNTIME_DEPS

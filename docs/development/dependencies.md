@@ -46,6 +46,7 @@ project wide:
   bundling is not enabled or supported for the target OS):
   - `THEROCK_BUNDLED_BZIP2`
   - `THEROCK_BUNDLED_ELFUTILS`
+  - `THEROCK_BUNDLED_FMT`
   - `THEROCK_BUNDLED_HWLOC`
   - `THEROCK_BUNDLED_LIBCAP`
   - `THEROCK_BUNDLED_LIBDRM`

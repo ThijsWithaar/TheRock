@@ -1,0 +1,45 @@
+From 09edf7882a63d5bd81d8e7ab04537a1b48b4b744 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sat, 14 Feb 2026 17:15:23 +0100
+Subject: [PATCH] debian build
+
+---
+ CMakeLists.txt                | 4 +++-
+ cmake/modules/FindLibDw.cmake | 4 +++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c116e79..9bb7214 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -73,9 +73,11 @@ set_target_properties(rocm-debug-agent PROPERTIES
+   NO_SYSTEM_FROM_IMPORTED ON)
+ 
+ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
++set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/mnt/workspace/cmake/finders/")
++set(CMAKE_FIND_PACKAGE_REDIRECTS_DIR "/mnt/workspace/cmake/finders/")
+ 
+ # Start by looking for libdw (lowercase).
+-find_package(libdw CONFIG)
++find_package(libdw REQUIRED)
+ 
+ # If libdw is found, we're likely building within TheRock build platform.
+ #
+diff --git a/cmake/modules/FindLibDw.cmake b/cmake/modules/FindLibDw.cmake
+index 23eefe0..8827869 100644
+--- a/cmake/modules/FindLibDw.cmake
++++ b/cmake/modules/FindLibDw.cmake
+@@ -17,7 +17,9 @@ find_library(FIND_LIBDW_LIBRARIES
+     dw
+   PATH
+     /usr/lib
+-    /usr/local/lib)
++    /usr/local/lib
++    /usr/lib/x86_64-linux-gnu
++    )
+ 
+ include(FindPackageHandleStandardArgs)
+ find_package_handle_standard_args(LibDw DEFAULT_MSG
+-- 
+2.47.3
+

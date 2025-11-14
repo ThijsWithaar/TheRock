@@ -1,0 +1,27 @@
+From 2518a33ccddb7a3aba2063a34d0fdf92bdbcc76e Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Fri, 14 Nov 2025 13:55:59 +0100
+Subject: [PATCH 7/7] Fix CPACK version for debian
+
+---
+ amd/hipcc/CMakeLists.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/amd/hipcc/CMakeLists.txt b/amd/hipcc/CMakeLists.txt
+index ca09a04538c6..3346aadb1390 100755
+--- a/amd/hipcc/CMakeLists.txt
++++ b/amd/hipcc/CMakeLists.txt
+@@ -113,7 +113,9 @@ elseif(DEFINED ENV{ROCM_VERSION})
+ else()
+   set(ROCM_VERSION_FOR_PACKAGE "99999")
+ endif()
+-set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}.${ROCM_VERSION_FOR_PACKAGE}")
++# Match Debian's version numbering to allow apt to select the right package:
++#set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}.${ROCM_VERSION_FOR_PACKAGE}")
++set(CPACK_PACKAGE_VERSION $ENV{ROCM_VERSION}-$ENV{BUILD_ID})
+ 
+ # Exclude Windows specific BAT scripts from install/packaging for Linux.
+ if (NOT WIN32)
+-- 
+2.47.3
+

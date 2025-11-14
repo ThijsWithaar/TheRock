@@ -1,0 +1,68 @@
+From 1a9b5630b17ac2b844964ca126bf2ce8719d68c3 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Mon, 2 Nov 2026 18:28:41 +0100
+Subject: [PATCH] RPP: Disable test
+
+---
+ projects/rpp/CMakeLists.txt | 38 ++++++++++++++++++++-----------------
+ 1 file changed, 21 insertions(+), 17 deletions(-)
+
+diff --git a/projects/rpp/CMakeLists.txt b/projects/rpp/CMakeLists.txt
+index ab7bbfeb68b..3d0275dd2ca 100644
+--- a/projects/rpp/CMakeLists.txt
++++ b/projects/rpp/CMakeLists.txt
+@@ -407,10 +407,12 @@ if( "${BACKEND}" STREQUAL "HIP")
+ endif()
+ 
+ # Test suite
+-enable_testing()
+-include(CTest)
+-add_subdirectory(test)
+-add_subdirectory(utilities/test_suite)
++if(RPP_TEST)
++	enable_testing()
++	include(CTest)
++	add_subdirectory(test)
++	add_subdirectory(utilities/test_suite)
++endif()
+ 
+ # Installation
+ # install RPP libs -- {ROCM_PATH}/lib
+@@ -434,19 +436,21 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rpp_version.h
+         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+         COMPONENT dev)
+ 
+-# install Test
+-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
+-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utilities/test_suite/ DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
+-
+-# Install shared ctest infrastructure for test filtering (quick, standard, comprehensive, full labels)
+-# Files are installed to cmake/shared/ctest/ to match the path expected by TestCategories.cmake
+-if(DEFINED ROCM_LIBRARIES_ROOT AND EXISTS "${ROCM_LIBRARIES_ROOT}/shared/ctest")
+-    install(FILES
+-        ${ROCM_LIBRARIES_ROOT}/shared/ctest/TestCategories.cmake
+-        ${ROCM_LIBRARIES_ROOT}/shared/ctest/parse_ctest_categories.py
+-        DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test/cmake/shared/ctest
+-        COMPONENT test
+-    )
++if(RPP_TEST)
++	# install Test
++	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cmake DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
++	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/utilities/test_suite/ DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test COMPONENT test)
++
++	# Install shared ctest infrastructure for test filtering (quick, standard, comprehensive, full labels)
++	# Files are installed to cmake/shared/ctest/ to match the path expected by TestCategories.cmake
++	if(DEFINED ROCM_LIBRARIES_ROOT AND EXISTS "${ROCM_LIBRARIES_ROOT}/shared/ctest")
++		install(FILES
++			${ROCM_LIBRARIES_ROOT}/shared/ctest/TestCategories.cmake
++			${ROCM_LIBRARIES_ROOT}/shared/ctest/parse_ctest_categories.py
++			DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/test/cmake/shared/ctest
++			COMPONENT test
++		)
++	endif()
+ endif()
+ 
+ # set license information
+-- 
+2.47.3
+

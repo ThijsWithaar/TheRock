@@ -237,6 +237,7 @@ option(THEROCK_ENABLE_PROFILER "Enable building the profiler libraries" "${THERO
 option(THEROCK_ENABLE_DC_TOOLS "Enable building of data center tools" "${THEROCK_ENABLE_ALL}")
 option(THEROCK_ENABLE_MEDIA_LIBS "Enable building of Media libraries" "${THEROCK_ENABLE_ALL}")
 option(THEROCK_ENABLE_EMULATION "Enable building of emulation tools" "${THEROCK_ENABLE_ALL}")
+option(THEROCK_ENABLE_IREE_LIBS "Enable building of IREE libraries" OFF)
 option(THEROCK_ENABLE_HOST_MATH "Build all bundled host math libraries by default" OFF)
 option(THEROCK_ENABLE_WSL "Enable building WSL-specific artifacts" OFF)
 option(THEROCK_RESET_FEATURES "One-shot flag which forces all feature flags to their default state for this configuration run" OFF)
@@ -369,6 +370,7 @@ endif()
 set(THEROCK_BUNDLED_BZIP2)
 set(THEROCK_BUNDLED_ELFUTILS)
 set(THEROCK_BUNDLED_EXPAT)
+set(THEROCK_BUNDLED_FMT)
 set(THEROCK_BUNDLED_GMP)
 set(THEROCK_BUNDLED_HWLOC)
 set(THEROCK_BUNDLED_LIBBACKTRACE)
@@ -398,6 +400,7 @@ if(THEROCK_BUNDLE_SYSDEPS)
     # Core sysdeps (always part of the 'sysdeps' artifact)
     set(THEROCK_BUNDLED_BZIP2 therock-bzip2)
     set(THEROCK_BUNDLED_ELFUTILS therock-elfutils)
+    set(THEROCK_BUNDLED_FMT therock-fmt)
     set(THEROCK_BUNDLED_LIBBACKTRACE therock-libbacktrace)
     set(THEROCK_BUNDLED_LIBCAP therock-libcap)
     set(THEROCK_BUNDLED_LIBDRM therock-libdrm)
@@ -440,6 +443,7 @@ if(THEROCK_BUNDLE_SYSDEPS)
     # Core sysdeps
     set(THEROCK_BUNDLED_BZIP2 therock-bzip2)
     set(THEROCK_BUNDLED_ELFUTILS therock-elfutils)
+    set(THEROCK_BUNDLED_FMT therock-fmt)
     set(THEROCK_BUNDLED_LIBBACKTRACE therock-libbacktrace)
     set(THEROCK_BUNDLED_LIBLZMA therock-liblzma)
     set(THEROCK_BUNDLED_SQLITE3 therock-sqlite3)
@@ -553,3 +557,61 @@ therock_write_subproject_manifest()
 
 include(therock_emit_consumer_graph)
 therock_emit_consumer_graph("${CMAKE_BINARY_DIR}/therock_consumer_graph.json")
+
+################################################################################
+# Packaging
+################################################################################
+
+# Reproducible timestamp in the repository
+execute_process(COMMAND git log -1 --format=%ct OUTPUT_VARIABLE SOURCE_DATE_EPOCH)
+set(ENV{SOURCE_DATE_EPOCH} "${SOURCE_DATE_EPOCH}")
+
+set(ROCM_VERSION "${ROCM_MAJOR_VERSION}.${ROCM_MINOR_VERSION}.${ROCM_PATCH_VERSION}")
+set(APT_DIR ${THEROCK_BINARY_DIR}/apt-repo)
+set(TOOL_DIR ${CMAKE_SOURCE_DIR}/build_tools)
+set(MLLIB_DIR ${CMAKE_SOURCE_DIR}/ml-libs)
+set(APT_SUITE stable)
+
+add_custom_command(
+  COMMENT "Build TheRock DEB packages"
+  DEPENDS therock-artifacts
+  OUTPUT ${THEROCK_BINARY_DIR}/artifact-debs.state
+  COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
+  COMMAND ${CMAKE_COMMAND} -E touch ${THEROCK_BINARY_DIR}/artifact-debs.state
+)
+add_custom_target(therock-deb ALL DEPENDS ${THEROCK_BINARY_DIR}/artifact-debs.state)
+
+add_custom_command(
+  COMMENT "Creating GPG keys"
+  DEPENDS ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/template/pgp-key.batch
+  OUTPUT ${APT_DIR}/rpi.private
+  COMMAND sudo gpg --no-tty --batch --gen-key ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/template/pgp-key.batch
+  COMMAND sudo gpg --armor --export Local_ROCM > ${APT_DIR}/rpi.public.asc
+  COMMAND sudo gpg --export Local_ROCM > ${APT_DIR}/rpi.public.gpg
+  COMMAND sudo gpg --armor --export-secret-keys Local_ROCM > ${APT_DIR}/rpi.private
+)
+
+add_custom_command(
+  COMMENT "Indexing PPA archive"
+  DEPENDS ${THEROCK_BINARY_DIR}/ppa-debs.state ${APT_DIR}/rpi.private
+  OUTPUT ${APT_DIR}/dists/${APT_SUITE}/Release ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+  COMMAND cmake -E make_directory ${APT_DIR}/dists/${APT_SUITE}/main/binary-amd64
+  COMMAND cd ${APT_DIR} && dpkg-scanpackages --arch amd64 pool > ${APT_DIR}/dists/${APT_SUITE}/main/binary-amd64/Packages
+  COMMAND cd ${APT_DIR}/dists/${APT_SUITE} && ${TOOL_DIR}/apt-generate-release.sh ${APT_SUITE} > Release
+  COMMAND sudo gpg --batch --yes --import ${APT_DIR}/rpi.private
+  COMMAND cat ${APT_DIR}/dists/${APT_SUITE}/Release | sudo gpg --batch --yes --default-key Local_ROCM -abs -o ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+)
+
+add_custom_command(
+  COMMENT "Uploading PPA archive"
+  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+  OUTPUT ${THEROCK_BINARY_DIR}/ppa-rsync.state
+  COMMAND echo rsync -ahP ${APT_DIR}/ thijs@rpi:/home/thijs/rocm-repo
+  COMMAND touch ${THEROCK_BINARY_DIR}/ppa-rsync.state
+)
+add_custom_target(therock-ppa-sync DEPENDS ${THEROCK_BINARY_DIR}/ppa-rsync.state)
+
+add_custom_target(therock-ppa
+  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release.gpg ${THEROCK_BINARY_DIR}/ppa-debs.state therock-deb
+)
+

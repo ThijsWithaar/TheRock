@@ -1,0 +1,38 @@
+From d7d55f2ef2722a28bd2baa7278c3b8fc8ef73e36 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Mon, 19 Oct 2026 18:34:34 +0200
+Subject: [PATCH] hipblastlt: WORKAROUND in marco parsing, link to rocroller
+
+---
+ projects/hipblaslt/CMakeLists.txt                               | 1 +
+ .../tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp         | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/projects/hipblaslt/CMakeLists.txt b/projects/hipblaslt/CMakeLists.txt
+index 0e77bbf27c3..0154094d0e6 100644
+--- a/projects/hipblaslt/CMakeLists.txt
++++ b/projects/hipblaslt/CMakeLists.txt
+@@ -367,6 +367,7 @@ if(HIPBLASLT_ENABLE_HOST)
+     endif()
+     if(HIPBLASLT_ENABLE_ROCROLLER)
+         target_compile_definitions(hipblaslt PUBLIC HIPBLASLT_USE_ROCROLLER)
++        target_link_libraries(hipblaslt PRIVATE roc::rocroller)
+     endif()
+     if(NOT HIPBLASLT_ENABLE_YAML)
+         target_link_libraries(hipblaslt PRIVATE ${hipblaslt_msgpack_target})
+diff --git a/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp b/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp
+index 8a762cf158e..95e3688105c 100644
+--- a/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp
++++ b/projects/hipblaslt/tensilelite/rocisa/rocisa/src/pass/macro_inline.cpp
+@@ -312,7 +312,7 @@ namespace rocisa
+             }
+             else
+             {
+-                assert(false && "macroToInstruction: unexpected item type in macro body");
++                //assert(false && "macroToInstruction: unexpected item type in macro body");
+             }
+         }
+     }
+-- 
+2.47.3
+

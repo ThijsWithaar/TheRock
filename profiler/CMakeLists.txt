@@ -104,6 +104,8 @@ if(THEROCK_ENABLE_ROCPROFV3)
     list(JOIN _detected_python_versions "\;" _detected_python_versions_str)
   endif()
 
+  #find_package(fmt REQUIRED)
+
   therock_cmake_subproject_declare(rocprofiler-sdk
     # Use TEST targets (all available archs) so the _generic test artifact
     # contains .hsaco files for all architectures, not just dist archs.
@@ -120,6 +122,7 @@ if(THEROCK_ENABLE_ROCPROFV3)
       -DROCPROFILER_BUILD_SAMPLES=OFF
       -DCMAKE_PREFIX_PATH="${THEROCK_BINARY_DIR}/dist/rocm"
       -DROCM_PATH="${THEROCK_BINARY_DIR}/dist/rocm"
+      #-DROCPROFILER_BUILD_FMT=OFF
       -DROCPROFILER_BUILD_YAML_CPP=OFF
       -DROCPROFILER_PYTHON_VERSIONS:STRING="${_detected_python_versions_str}"
     CMAKE_INCLUDES
@@ -129,8 +132,11 @@ if(THEROCK_ENABLE_ROCPROFV3)
       rocprofiler-sdk-roctx
       rocprofiler-sdk-rocpd
       rocprofiler-sdk-tests
+#      fmt
     COMPILER_TOOLCHAIN
       amd-hip
+#    BUILD_DEPS
+#      ${THEROCK_BUNDLED_FMT}
     RUNTIME_DEPS
       aqlprofile
       hip-clr
@@ -353,9 +359,12 @@ if(THEROCK_ENABLE_ROCPROFSYS)
       "lib/rocm_sysdeps/lib"
     CMAKE_INCLUDES
       therock_explicit_finders.cmake
+#    IGNORE_PACKAGES
+#      fmt
     BUILD_DEPS
       therock-spdlog
       therock-fmt
+      #${THEROCK_BUNDLED_FMT}
     RUNTIME_DEPS
       amdsmi
       aqlprofile

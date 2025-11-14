@@ -1,0 +1,43 @@
+From 8dc203b9a4aa511d5fa3056afe29a639730a2b1b Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Wed, 20 May 2026 19:51:09 +0200
+Subject: [PATCH 1/2] tensile: replace std::stoi with std::from_chars
+
+---
+ .../Tensile/Source/client/source/ResultFileReporter.cpp    | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp b/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp
+index b53aa2fd65e..f8adba02bd7 100644
+--- a/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp
++++ b/shared/tensile/Tensile/Source/client/source/ResultFileReporter.cpp
+@@ -26,6 +26,7 @@
+ 
+ #include <ResultFileReporter.hpp>
+ 
++#include <charconv>
+ #include <cstddef>
+ #include <sstream>
+ 
+@@ -115,15 +116,15 @@ namespace Tensile
+             }
+             else if(key == ResultKey::GfxFrequency)
+             {
+-                m_currGfxClock = static_cast<uint16_t>(std::stoi(valueStr));
++                std::from_chars(begin(valueStr), end(valueStr), m_currGfxClock);
+             }
+             else if(key == ResultKey::Power)
+             {
+-                m_currPower = static_cast<uint16_t>(std::stoi(valueStr));
++                std::from_chars(begin(valueStr), end(valueStr), m_currPower);
+             }
+             else if(key == ResultKey::TemperatureHot)
+             {
+-                m_currTemperatureHot = static_cast<uint16_t>(std::stoi(valueStr));
++                std::from_chars(begin(valueStr), end(valueStr), m_currTemperatureHot);
+             }
+             else
+             {
+-- 
+2.47.3
+
