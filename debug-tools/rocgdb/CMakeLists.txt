@@ -132,10 +132,10 @@ message(STATUS "Build type set to: ${CMAKE_BUILD_TYPE}")
 
 # Fetch the install prefixes for the library and executables rocgdb
 # depends on.
-fetch_library_prefix(CMAKE_PREFIX_PATH "/gmp/build/stage" GMP_PREFIX)
-fetch_library_prefix(CMAKE_PREFIX_PATH "/mpfr/build/stage" MPFR_PREFIX)
-fetch_library_prefix(CMAKE_PREFIX_PATH "/expat/build/stage" EXPAT_PREFIX)
-fetch_library_prefix(CMAKE_PREFIX_PATH "/ncurses/build/stage" NCURSES_PREFIX)
+set(GMP_PREFIX /usr)
+set(MPFR_PREFIX /usr)
+set(EXPAT_PREFIX /usr)
+set(NCURSES_PREFIX /usr)
 
 # We need to explicitly pass ncurses' include path and set the rpath for
 # the library. The reason we need to explicitly pass rpath is because gdb's

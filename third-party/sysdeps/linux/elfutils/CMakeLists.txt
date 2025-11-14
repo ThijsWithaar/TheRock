@@ -25,10 +25,10 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         "-DPATCHELF=${PATCHELF}"
         "-DPython3_EXECUTABLE=${Python3_EXECUTABLE}"
       RUNTIME_DEPS
-        therock-bzip2
-        therock-liblzma
-        therock-zlib
-        therock-zstd
+        ${THEROCK_BUNDLED_BZIP2}
+        ${THEROCK_BUNDLED_ZLIB}
+        ${THEROCK_BUNDLED_LIBLZMA}
+        ${THEROCK_BUNDLED_ZSTD}
       INSTALL_DESTINATION
         lib/rocm_sysdeps
       INTERFACE_LINK_DIRS

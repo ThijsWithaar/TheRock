@@ -1,0 +1,35 @@
+From 449cecab8e4f330752b1325dc7d0b434c02b00ca Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 16 Nov 2025 10:05:15 +0100
+Subject: [PATCH 5/5] workaround for clang-tidy crashing
+
+---
+ projects/miopen/CMakeLists.txt | 12 ++----------
+ 1 file changed, 2 insertions(+), 10 deletions(-)
+
+diff --git a/projects/miopen/CMakeLists.txt b/projects/miopen/CMakeLists.txt
+index 5ce8653e2f..5cbff4bf24 100644
+--- a/projects/miopen/CMakeLists.txt
++++ b/projects/miopen/CMakeLists.txt
+@@ -731,16 +731,8 @@ elseif(MIOPEN_BACKEND STREQUAL "HIP" OR MIOPEN_BACKEND STREQUAL "HIPNOGPU")
+     set(MIOPEN_TIDY_ERRORS ALL)
+ endif()
+ 
+-include(ClangTidy)
+-enable_clang_tidy(
+-    CHECKS
+-        ${MIOPEN_TIDY_CHECKS}
+-    ${MIOPEN_TIDY_ERRORS}
+-    HEADER_FILTER
+-        "\.hpp$"
+-    EXTRA_ARGS
+-        -DMIOPEN_USE_CLANG_TIDY
+-)
++function(clang_tidy_check a)
++endfunction()
+ 
+ include(CppCheck)
+ enable_cppcheck(
+-- 
+2.47.3
+
