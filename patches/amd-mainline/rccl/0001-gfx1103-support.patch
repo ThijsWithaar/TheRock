@@ -1,0 +1,61 @@
+From 88183eb1737240c946b3a02750c39765381921d6 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Fri, 14 Nov 2025 14:09:31 +0100
+Subject: [PATCH] gfx1103 support
+
+---
+ src/device/common.h          | 2 +-
+ test/common/TestBed.cpp      | 7 ++++++-
+ tools/JitterBench/Common.hpp | 2 +-
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/device/common.h b/src/device/common.h
+index ada2eba9..27ce4e74 100644
+--- a/src/device/common.h
++++ b/src/device/common.h
+@@ -26,7 +26,7 @@
+   { __atomic_store_n((DST), (SRC), __ATOMIC_SEQ_CST); }
+ #endif
+ 
+-#if defined(__gfx1100__) || defined(__gfx1101__) || defined(__gfx1102__) || defined(__gfx1200__) || defined(__gfx1201__)
++#if defined(__gfx1100__) || defined(__gfx1101__) || defined(__gfx1102__) || defined(__gfx1103__) || defined(__gfx1200__) || defined(__gfx1201__)
+ #define __trace_hwreg()
+ #else
+ #define __trace_hwreg() \
+diff --git a/test/common/TestBed.cpp b/test/common/TestBed.cpp
+index 0825a847..48ff9c0b 100644
+--- a/test/common/TestBed.cpp
++++ b/test/common/TestBed.cpp
+@@ -3,10 +3,15 @@
+  *
+  * See LICENSE.txt for license information
+  ************************************************************************/
+-#include <unistd.h>
+ #include "TestBed.hpp"
++
++#include <iomanip>
++
++#include <unistd.h>
++
+ #include <rccl/rccl.h>
+ 
++
+ #define PIPE_WRITE(childId, val)                                        \
+   ASSERT_EQ(write(childList[childId]->parentWriteFd, &val, sizeof(val)), sizeof(val))
+ 
+diff --git a/tools/JitterBench/Common.hpp b/tools/JitterBench/Common.hpp
+index bad12a1b..7010e62d 100644
+--- a/tools/JitterBench/Common.hpp
++++ b/tools/JitterBench/Common.hpp
+@@ -43,7 +43,7 @@ THE SOFTWARE.
+ #endif
+ 
+ // Macro for collecting HW_REG_HW_ID
+-#if defined(__gfx1100__) || defined(__gfx1101__) || defined(__gfx1102__) || defined(__NVCC__)
++#if defined(__gfx1100__) || defined(__gfx1101__) || defined(__gfx1102__) || defined(__gfx1103__) || defined(__NVCC__)
+ #define GetHwId(val) \
+   val = 0
+ #else
+-- 
+2.47.3
+

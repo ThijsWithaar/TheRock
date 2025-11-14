@@ -509,3 +509,35 @@ endif()
 # Finalization
 ################################################################################
 therock_subproject_merge_compile_commands()
+
+
+################################################################################
+# Packaging
+################################################################################
+
+set(ROCM_VERSION "${ROCM_MAJOR_VERSION}.${ROCM_MINOR_VERSION}.${ROCM_PATCH_VERSION}")
+set(APT_DIR ${THEROCK_BINARY_DIR}/apt-repo)
+set(TOOL_DIR ${THEROCK_BINARY_DIR}/build_tools)
+set(MLLIB_DIR ${CMAKE_SOURCE_DIR}/ml-libs)
+set(APT_SUITE trixie)
+
+add_custom_target(therock-ppa-debs
+  DEPENDS therock-artifacts
+  COMMAND echo ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix ${BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
+  COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/jax/dist/*.whl
+  COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
+  COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/pytorch/dist/*.whl
+  COMMAND touch ${THEROCK_BINARY_DIR}/ppa-debs.state
+  BYPRODUCTS ${THEROCK_BINARY_DIR}/ppa-debs.state
+)
+add_custom_target(therock-ppa-index
+  DEPENDS therock-ppa-debs
+  COMMAND echo cd ${APT_DIR} && dpkg-scanpackages --arch amd64 pool/ > ${APT_DIR}/dists/${APT_SUITE}/main/binary-amd64/Packages
+  COMMAND echo cd ${APT_DIR}/dists/${APT_SUITE} && ${TOOL_DIR}/apt-generate-release.sh > Release
+  COMMAND echo cat ${APT_DIR}/dists/${APT_SUITE}/Release | gpg --batch --yes --default-key Local_ROCM -abs -o ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+  BYPRODUCTS ${APT_DIR}/dists/${APT_SUITE}/Release ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+)
+add_custom_target(therock-ppa-rsync
+  DEPENDS therock-ppa-index
+  COMMAND echo rsync -ahP ${APT_DIR}/ thijs@rpi:/home/thijs/rocm-repo
+)

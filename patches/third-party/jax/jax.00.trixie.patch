@@ -1,0 +1,24 @@
+diff --git a/.bazelrc b/.bazelrc
+index f7b46120c..5e0350b29 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -145,8 +145,8 @@ build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
+ build:cuda --@local_config_cuda//:enable_cuda
+ 
+ # Default hermetic CUDA and CUDNN versions.
+-build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.8.0"
+-build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.8.0"
++build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.2.0"
++build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.1.1"
+ build:cuda --@local_config_cuda//cuda:include_cuda_libs=true
+ 
+ # This config is used for building targets with CUDA libraries from stubs.
+@@ -181,7 +181,7 @@ build:win_clang --compiler=clang-cl
+ build:rocm_base --crosstool_top=@local_config_rocm//crosstool:toolchain
+ build:rocm_base --define=using_rocm=true --define=using_rocm_hipcc=true
+ build:rocm_base --repo_env TF_NEED_ROCM=1
+-build:rocm_base --action_env TF_ROCM_AMDGPU_TARGETS="gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100,gfx1200,gfx1201"
++build:rocm_base --action_env TF_ROCM_AMDGPU_TARGETS="gfx908,gfx1100,gfx1103"
+ 
+ # Build with hipcc for ROCm and clang for the host.
+ build:rocm --config=rocm_base

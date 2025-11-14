@@ -1,0 +1,46 @@
+{
+	"name": "ROCM (trixie)",
+	"dockerFile": "../dockerfiles/debian_trixie.Dockerfile",
+	"build": {
+		"target": "rocm_trixie"
+	},
+	"runArgs": [
+		"--network=host",
+		"--device=/dev/kfd",
+		"--device=/dev/dri",
+		"--cap-add=SYS_PTRACE",
+		"--group-add=video",
+		"--group-add=render",
+		"--security-opt",
+		"seccomp=unconfined"
+	],
+	"updateRemoteUserUID": true,
+	"remoteUser": "rocm",
+	"mounts": [
+		"source=${localEnv:HOME}/.cache/bazel,target=/home/rocm/.cache/bazel,type=bind"
+	],
+	"workspaceMount": "source=${localWorkspaceFolder},target=/mnt/workspace,type=bind",
+	"workspaceFolder": "/mnt/workspace",
+	"containerEnv": {
+		"DISPLAY": "${localEnv:DISPLAY}",
+		"WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+		"HIP_CLANG_LAUNCHER": "ccache",
+		"CCACHE_CONFIGPATH": "/mnt/workspace/.ccache/ccache.conf",
+		"CCACHE_ENABLED": "true",
+		"JOB_DESIGNATOR": "",
+		"BUILD_ID": "1",
+		"THEROCK_AMDGPU_FAMILIES": "gfx110X-all"
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "bash"
+			},
+			"extensions": [
+				"ms-vscode.makefile-tools",
+				"ms-python.python",
+				"ms-vscode.cpptools-extension-pack"
+			]
+		}
+	}
+}

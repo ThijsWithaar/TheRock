@@ -23,6 +23,8 @@ if(THEROCK_ENABLE_CORE_RUNTIME)
       "${_system_toolchain}"
     CMAKE_ARGS
       "-DBUILD_SHARED_LIBS=ON"
+      "-DLibElf_DIR=${THEROCK_SOURCE_DIR}/cmake/finders"
+      "-DNUMA_DIR=${THEROCK_SOURCE_DIR}/cmake/finders"
     BUILD_DEPS
       amd-llvm
       therock-simde
