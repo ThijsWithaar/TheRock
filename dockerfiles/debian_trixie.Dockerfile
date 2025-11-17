@@ -1,15 +1,20 @@
-FROM debian:trixie AS rocm_trixie_vscode
+FROM debian:trixie-20251103 AS rocm_trixie_vscode
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NONINTERACTIVE_SEEN=true
 
 RUN sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/debian.sources && \
-	apt update -q && apt install -y --no-upgrade apt-utils ca-certificates sed gnupg locales sudo unzip wget curl git git-lfs && \
-	sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && dpkg-reconfigure locales && \
-	wget https://storage.googleapis.com/git-repo-downloads/repo -O /usr/bin/repo && \
-	chmod a+x /usr/bin/repo
+	apt update -q && apt install --no-upgrade -y -qq apt-utils ca-certificates sed gnupg locales sudo unzip wget && \
+	sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && dpkg-reconfigure locales \
+	wget -O - https://bazel.build/bazel-release.pub.gpg | gpg --dearmor -o /etc/apt/keyrings/bazel-release.gpg \
+	echo "deb [arch=amd64, signed-by=/etc/apt/keyrings/bazel-release.gpg] http://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list > /dev/null
+#	wget https://storage.googleapis.com/git-repo-downloads/repo -O /usr/bin/repo && \
+#	chmod a+x /usr/bin/repo
 
-RUN apt update && apt install --no-install-recommends -y -qq build-essential file fakeroot rsync cpio cmake ninja-build ccache \
+ARG PKG_JAX=binutils-gold bazel-7.4.1 libxml2-dev patchelf clang-18 lld-18
+
+RUN apt update && apt install --no-upgrade --no-install-recommends -y -qq \
+	curl git git-lfs file fakeroot rsync cpio build-essential cmake ninja-build ccache \
 	rpm gfortran libgtest-dev libgmock-dev \
 	libboost-all-dev libgrpc-dev googletest ocaml-platform libfmt-dev nasm yasm \
 	libdwarf-dev libelf-dev libdw-dev libpci-dev libgmp-dev libmpfr-dev libsqlite3-dev \
@@ -23,7 +28,7 @@ RUN apt update && apt install --no-install-recommends -y -qq build-essential fil
 	python3-sphinx python3-myst-parser python3-websockets python3-git python3-tqdm python3-joblib \
 	python3-pyelftools debhelper-compat llvm jq \
 	ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev x265 fdkaac \
-	doxygen texinfo texlive bison flex libtool gettext
+	doxygen texinfo texlive bison flex libtool gettext $PKG_JAX
 
 RUN pip3 install --break-system-packages CppHeaderParser
 
@@ -50,7 +55,9 @@ RUN update-ccache-symlinks
 ENV PATH="/usr/lib/ccache:$PATH:/opt/rocm"
 
 # The build scripts use python in their shebang, instead of python3
-RUN update-alternatives --install /usr/local/bin/python python /usr/bin/python3 3
+RUN update-alternatives --install /usr/local/bin/python python /usr/bin/python3 3 && \
+	update-alternatives --install /usr/local/bin/clang clang /usr/bin/clang-18 18 && \
+	update-alternatives --install /usr/local/bin/clang++ clang++ /usr/bin/clang++-18 18
 
 RUN echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 

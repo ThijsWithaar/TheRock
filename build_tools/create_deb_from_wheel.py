@@ -22,7 +22,7 @@ from email.parser import Parser
 # https://packages.debian.org/search
 def pip2apt(pip_name:str):
     apt_name = f'python3-{pip_name.replace('_','-')}'
-    if pip_name in ['scipy', 'numpy', 'optree', 'ml_dtypes', 'jaxlib']:
+    if pip_name in ['scipy', 'numpy', 'optree', 'ml_dtypes', 'jaxlib', 'jax-rocm60-pjrt']:
         return apt_name
     elif subprocess.run(['apt-cache','show', apt_name],
                         stderr=subprocess.DEVNULL,

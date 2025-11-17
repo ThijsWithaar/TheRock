@@ -17,7 +17,9 @@
 	"updateRemoteUserUID": true,
 	"remoteUser": "rocm",
 	"mounts": [
-		"source=${localEnv:HOME}/.cache/bazel,target=/home/rocm/.cache/bazel,type=bind"
+		"source=${localEnv:HOME}/.cache/bazel,target=/home/rocm/.cache/bazel,type=bind",
+		"type=bind,source=/home/${localEnv:USER}/.ssh,target=/home/rocm/.ssh,readonly,consistency=cached",
+		"source=/media/rpi/home/thijs/remote_ccache,target=/mnt/ccache,type=bind"
 	],
 	"workspaceMount": "source=${localWorkspaceFolder},target=/mnt/workspace,type=bind",
 	"workspaceFolder": "/mnt/workspace",
@@ -27,6 +29,7 @@
 		"HIP_CLANG_LAUNCHER": "ccache",
 		"CCACHE_CONFIGPATH": "/mnt/workspace/.ccache/ccache.conf",
 		"CCACHE_ENABLED": "true",
+		"CMAKE_BUILD_PARALLEL_LEVEL": "12",
 		"JOB_DESIGNATOR": "",
 		"BUILD_ID": "1",
 		"THEROCK_AMDGPU_FAMILIES": "gfx110X-all"

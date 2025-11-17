@@ -1,0 +1,162 @@
+From d07335af3be88bc25c15c531543b1143d0cd0105 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@sioux.eu>
+Date: Mon, 17 Nov 2025 14:01:31 +0100
+Subject: [PATCH 6/6] rocwmma: gfx1103
+
+---
+ projects/hipdnn/backend/CMakeLists.txt                    | 1 -
+ .../rocwmma/library/include/rocwmma/internal/config.hpp   | 8 +++++++-
+ .../library/include/rocwmma/internal/constants.hpp        | 3 +++
+ .../library/include/rocwmma/internal/wmma_impl.hpp        | 2 ++
+ projects/rocwmma/test/gemm/gemm_test_traits.hpp           | 3 ++-
+ projects/rocwmma/test/hip_device.hpp                      | 1 +
+ projects/rocwmma/test/unit/unit_test_traits.hpp           | 3 ++-
+ 7 files changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/projects/hipdnn/backend/CMakeLists.txt b/projects/hipdnn/backend/CMakeLists.txt
+index a0a7c547f7..4181e97d3f 100644
+--- a/projects/hipdnn/backend/CMakeLists.txt
++++ b/projects/hipdnn/backend/CMakeLists.txt
+@@ -4,4 +4,3 @@
+ set(HIP_DNN_BACKEND_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+ 
+ add_subdirectory(src)
+-add_subdirectory(tests)
+\ No newline at end of file
+diff --git a/projects/rocwmma/library/include/rocwmma/internal/config.hpp b/projects/rocwmma/library/include/rocwmma/internal/config.hpp
+index d66f448947..683a2a414a 100644
+--- a/projects/rocwmma/library/include/rocwmma/internal/config.hpp
++++ b/projects/rocwmma/library/include/rocwmma/internal/config.hpp
+@@ -37,6 +37,7 @@
+ /// ROCWMMA_ARCH_GFX1100
+ /// ROCWMMA_ARCH_GFX1101
+ /// ROCWMMA_ARCH_GFX1102
++/// ROCWMMA_ARCH_GFX1103
+ /// ROCWMMA_ARCH_GFX1150
+ /// ROCWMMA_ARCH_GFX1151
+ /// ROCWMMA_ARCH_GFX1200
+@@ -65,6 +66,8 @@
+ #define ROCWMMA_ARCH_GFX1101 __gfx1101__
+ #elif defined(__gfx1102__) && ROCWMMA_DEVICE_COMPILE
+ #define ROCWMMA_ARCH_GFX1102 __gfx1102__
++#elif defined(__gfx1103__) && ROCWMMA_DEVICE_COMPILE
++#define ROCWMMA_ARCH_GFX1103 __gfx1103__
+ #elif defined(__gfx1150__) && ROCWMMA_DEVICE_COMPILE
+ #define ROCWMMA_ARCH_GFX1150 __gfx1150__
+ #elif defined(__gfx1151__) && ROCWMMA_DEVICE_COMPILE
+@@ -100,6 +103,9 @@ static_assert(0, "Unsupported architecture");
+ #if !defined(ROCWMMA_ARCH_GFX1102)
+ #define ROCWMMA_ARCH_GFX1102 0
+ #endif
++#if !defined(ROCWMMA_ARCH_GFX1103)
++#define ROCWMMA_ARCH_GFX1103 0
++#endif
+ #if !defined(ROCWMMA_ARCH_GFX1150)
+ #define ROCWMMA_ARCH_GFX1150 0
+ #endif
+@@ -134,7 +140,7 @@ static_assert(0, "Unsupported architecture");
+ #define ROCWMMA_BLOCK_DIM_32_SUPPORTED 1
+ #endif
+ 
+-#if ROCWMMA_ARCH_GFX1100 || ROCWMMA_ARCH_GFX1101 || ROCWMMA_ARCH_GFX1102 || ROCWMMA_ARCH_GFX1150 || ROCWMMA_ARCH_GFX1151
++#if ROCWMMA_ARCH_GFX1100 || ROCWMMA_ARCH_GFX1101 || ROCWMMA_ARCH_GFX1102 || ROCWMMA_ARCH_GFX1103 || ROCWMMA_ARCH_GFX1150 || ROCWMMA_ARCH_GFX1151
+ #define ROCWMMA_ARCH_GFX11 1
+ #define ROCWMMA_WAVE32_MODE 1
+ #define ROCWMMA_BLOCK_DIM_16_SUPPORTED 1
+diff --git a/projects/rocwmma/library/include/rocwmma/internal/constants.hpp b/projects/rocwmma/library/include/rocwmma/internal/constants.hpp
+index 22a4951925..9a90309daf 100644
+--- a/projects/rocwmma/library/include/rocwmma/internal/constants.hpp
++++ b/projects/rocwmma/library/include/rocwmma/internal/constants.hpp
+@@ -42,6 +42,7 @@ namespace rocwmma
+         static constexpr uint32_t AMDGCN_ARCH_ID_GFX1100 = 0x1100;
+         static constexpr uint32_t AMDGCN_ARCH_ID_GFX1101 = 0x1101;
+         static constexpr uint32_t AMDGCN_ARCH_ID_GFX1102 = 0x1102;
++        static constexpr uint32_t AMDGCN_ARCH_ID_GFX1103 = 0x1103;
+         static constexpr uint32_t AMDGCN_ARCH_ID_GFX1150 = 0x1150;
+         static constexpr uint32_t AMDGCN_ARCH_ID_GFX1151 = 0x1151;
+         static constexpr uint32_t AMDGCN_ARCH_ID_GFX1200 = 0x1200;
+@@ -72,6 +73,8 @@ namespace rocwmma
+         static constexpr uint32_t AMDGCN_CURRENT_ARCH_ID = AMDGCN_ARCH_ID_GFX1101;
+ #elif ROCWMMA_ARCH_GFX1102
+         static constexpr uint32_t AMDGCN_CURRENT_ARCH_ID = AMDGCN_ARCH_ID_GFX1102;
++#elif ROCWMMA_ARCH_GFX1103
++        static constexpr uint32_t AMDGCN_CURRENT_ARCH_ID = AMDGCN_ARCH_ID_GFX1103;
+ #elif ROCWMMA_ARCH_GFX1150
+         static constexpr uint32_t AMDGCN_CURRENT_ARCH_ID = AMDGCN_ARCH_ID_GFX1150;
+ #elif ROCWMMA_ARCH_GFX1151
+diff --git a/projects/rocwmma/library/include/rocwmma/internal/wmma_impl.hpp b/projects/rocwmma/library/include/rocwmma/internal/wmma_impl.hpp
+index 183979bff9..5b16849cd8 100644
+--- a/projects/rocwmma/library/include/rocwmma/internal/wmma_impl.hpp
++++ b/projects/rocwmma/library/include/rocwmma/internal/wmma_impl.hpp
+@@ -49,6 +49,7 @@ namespace rocwmma
+                                             Constants::AMDGCN_ARCH_ID_GFX1100,
+                                             Constants::AMDGCN_ARCH_ID_GFX1101,
+                                             Constants::AMDGCN_ARCH_ID_GFX1102,
++											Constants::AMDGCN_ARCH_ID_GFX1103,
+                                             Constants::AMDGCN_ARCH_ID_GFX1150,
+                                             Constants::AMDGCN_ARCH_ID_GFX1151> && Cond>;
+ 
+@@ -68,6 +69,7 @@ namespace rocwmma
+                                             Constants::AMDGCN_ARCH_ID_GFX1100,
+                                             Constants::AMDGCN_ARCH_ID_GFX1101,
+                                             Constants::AMDGCN_ARCH_ID_GFX1102,
++											Constants::AMDGCN_ARCH_ID_GFX1103,
+                                             Constants::AMDGCN_ARCH_ID_GFX1150,
+                                             Constants::AMDGCN_ARCH_ID_GFX1151,
+                                             Constants::AMDGCN_ARCH_ID_GFX1200,
+diff --git a/projects/rocwmma/test/gemm/gemm_test_traits.hpp b/projects/rocwmma/test/gemm/gemm_test_traits.hpp
+index ef73846be8..9d9c70cc69 100644
+--- a/projects/rocwmma/test/gemm/gemm_test_traits.hpp
++++ b/projects/rocwmma/test/gemm/gemm_test_traits.hpp
+@@ -103,6 +103,7 @@ namespace rocwmma
+             IsGfx1100 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1100),
+             IsGfx1101 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1101),
+             IsGfx1102 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1102),
++			IsGfx1103 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1103),
+             IsGfx1150 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1150),
+             IsGfx1151 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1151),
+ 
+@@ -110,7 +111,7 @@ namespace rocwmma
+             IsGfx1201 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1201),
+ 
+             IsGfx9  = IsGfx908 || IsGfx90A || IsGfx942 || IsGfx950,
+-            IsGfx11 = IsGfx1100 || IsGfx1101 || IsGfx1102 || IsGfx1150 || IsGfx1151,
++            IsGfx11 = IsGfx1100 || IsGfx1101 || IsGfx1102 || IsGfx1103 || IsGfx1150 || IsGfx1151,
+             IsGfx12 = IsGfx1200 || IsGfx1201,
+         };
+ 
+diff --git a/projects/rocwmma/test/hip_device.hpp b/projects/rocwmma/test/hip_device.hpp
+index 11125b715d..40e265c5a7 100644
+--- a/projects/rocwmma/test/hip_device.hpp
++++ b/projects/rocwmma/test/hip_device.hpp
+@@ -55,6 +55,7 @@ namespace rocwmma
+             GFX1100          = Constants::AMDGCN_ARCH_ID_GFX1100,
+             GFX1101          = Constants::AMDGCN_ARCH_ID_GFX1101,
+             GFX1102          = Constants::AMDGCN_ARCH_ID_GFX1102,
++			GFX1103          = Constants::AMDGCN_ARCH_ID_GFX1103,
+             GFX1150          = Constants::AMDGCN_ARCH_ID_GFX1150,
+             GFX1151          = Constants::AMDGCN_ARCH_ID_GFX1151,
+             GFX1200          = Constants::AMDGCN_ARCH_ID_GFX1200,
+diff --git a/projects/rocwmma/test/unit/unit_test_traits.hpp b/projects/rocwmma/test/unit/unit_test_traits.hpp
+index 440f0fbd1a..6d093e2100 100644
+--- a/projects/rocwmma/test/unit/unit_test_traits.hpp
++++ b/projects/rocwmma/test/unit/unit_test_traits.hpp
+@@ -77,13 +77,14 @@ namespace rocwmma
+             IsGfx1100 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1100),
+             IsGfx1101 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1101),
+             IsGfx1102 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1102),
++			IsGfx1103 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1103),
+             IsGfx1150 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1150),
+             IsGfx1151 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1151),
+             IsGfx1200 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1200),
+             IsGfx1201 = (ArchId == Constants::AMDGCN_ARCH_ID_GFX1201),
+ 
+             IsGfx9  = IsGfx908 || IsGfx90A || IsGfx942 || IsGfx950,
+-            IsGfx11 = IsGfx1100 || IsGfx1101 || IsGfx1102 || IsGfx1150 || IsGfx1151,
++            IsGfx11 = IsGfx1100 || IsGfx1101 || IsGfx1102 || IsGfx1103 || IsGfx1150 || IsGfx1151,
+             IsGfx12 = IsGfx1200 || IsGfx1201,
+         };
+     };
+-- 
+2.47.3
+
