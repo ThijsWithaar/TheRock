@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 do_hash() {
@@ -14,15 +14,33 @@ do_hash() {
     done
 }
 
+# Date
+BUILD_DATE="$(date --utc --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" -Ru)"
+
+# Get OS codename
+. /etc/os-release
+
+# Get architecture, https://askubuntu.com/a/804654
+ARCH=$(uname -m)
+if [[ "$ARCH" == x86_64* ]]; then
+  ARCH="amd64"
+elif [[ "$ARCH" == i*86 ]]; then
+  ARCH="i386"
+elif  [[ "$ARCH" == armv8* ]]; then
+  echo "arm64"
+elif  [[ "$ARCH" == arm* ]]; then
+  echo "arm"
+fi
+
 cat << EOF
 Origin: ROCM Repository
 Label: ROCM
-Suite: testing
-Codename: trixie
-Date: $(date -Ru)
-Architectures: amd64
+Suite: stable
+Codename: ${VERSION_CODENAME}
+Date: ${BUILD_DATE}
+Architectures: ${ARCH}
 Components: main
-Description: AMDs ROCM GPU compute
+Description: ROCm Repository
 EOF
 do_hash "MD5Sum" "md5sum"
 do_hash "SHA1" "sha1sum"

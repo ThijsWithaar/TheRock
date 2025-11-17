@@ -1,0 +1,124 @@
+From 146c695eed4369222a559bab861762c3f8b4e721 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Wed, 19 Nov 2025 17:31:36 +0100
+Subject: [PATCH] Fix build for TheRock integration
+
+---
+ build/build.py                          | 10 ++++++++++
+ jaxlib/rocm/BUILD                       |  5 +++++
+ jaxlib/tools/build_gpu_kernels_wheel.py |  1 -
+ jaxlib/tools/build_gpu_plugin_wheel.py  |  1 -
+ jaxlib/tools/build_mosaic_wheel.py      |  1 -
+ 5 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/build/build.py b/build/build.py
+index 1e3375674..c35e78fb3 100755
+--- a/build/build.py
++++ b/build/build.py
+@@ -268,6 +268,13 @@ def add_artifact_subcommand_arguments(parser: argparse.ArgumentParser):
+       help="Path to the ROCm toolkit.",
+   )
+ 
++  rocm_group.add_argument(
++      "--rocm-device-lib-path",
++      type=str,
++      default="",
++      help="Path to the ROCm device libraries.",
++  )
++
+   # Compile Options
+   compile_group = parser.add_argument_group('Compile Options')
+ 
+@@ -630,6 +637,9 @@ async def main():
+     if args.rocm_path:
+       logging.debug("ROCm toolkit path: %s", args.rocm_path)
+       wheel_build_command_base.append(f"--action_env=ROCM_PATH=\"{args.rocm_path}\"")
++    if args.rocm_device_lib_path:
++      logging.debug("ROCm device library path: %s", args.rocm_device_lib_path)
++      wheel_build_command_base.append(f"--action_env=HIP_DEVICE_LIB_PATH=\"{args.rocm_device_lib_path}\"")
+     if args.rocm_amdgpu_targets:
+       logging.debug("ROCm AMD GPU targets: %s", args.rocm_amdgpu_targets)
+       wheel_build_command_base.append(
+diff --git a/jaxlib/rocm/BUILD b/jaxlib/rocm/BUILD
+index 2d01912f4..243c62e3f 100644
+--- a/jaxlib/rocm/BUILD
++++ b/jaxlib/rocm/BUILD
+@@ -59,6 +59,7 @@ cc_library(
+         "@com_google_absl//absl/strings",
+         "@com_google_absl//absl/strings:str_format",
+     ] + if_rocm_is_configured([
++        "@local_config_rocm//rocm:rocm_config",
+         "@local_config_rocm//rocm:rocm_headers",
+     ]),
+ )
+@@ -70,6 +71,7 @@ rocm_library(
+     deps = [
+         ":hip_vendor",
+         "@local_config_rocm//rocm:rocm_headers",
++        "@local_config_rocm//rocm:rocm_config",
+     ],
+ )
+ 
+@@ -289,6 +291,7 @@ rocm_library(
+         ":hip_gpu_kernel_helpers",
+         ":hip_vendor",
+         "@xla//xla/ffi/api:ffi",
++        "@local_config_rocm//rocm:rocm_config",
+     ],
+ )
+ 
+@@ -337,6 +340,7 @@ rocm_library(
+         ":hip_gpu_kernel_helpers",
+         ":hip_vendor",
+         "//jaxlib:kernel_helpers",
++        "@local_config_rocm//rocm:rocm_config",
+         "@local_config_rocm//rocm:rocm_headers",
+         "@xla//xla/ffi/api:ffi",
+     ],
+@@ -521,6 +525,7 @@ cc_library(
+         "@xla//xla/python:nb_numpy",
+         "@xla//xla/python:types",
+         "@xla//xla/service:platform_util",
++		"@local_config_rocm//rocm:rocm_config",
+     ],
+ )
+ 
+diff --git a/jaxlib/tools/build_gpu_kernels_wheel.py b/jaxlib/tools/build_gpu_kernels_wheel.py
+index 4ecb803eb..5804d73a7 100644
+--- a/jaxlib/tools/build_gpu_kernels_wheel.py
++++ b/jaxlib/tools/build_gpu_kernels_wheel.py
+@@ -67,7 +67,6 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
+     help="NVIDIA wheel versions data",
+ )
+ args = parser.parse_args()
+diff --git a/jaxlib/tools/build_gpu_plugin_wheel.py b/jaxlib/tools/build_gpu_plugin_wheel.py
+index 7ef6fdaae..44735066c 100644
+--- a/jaxlib/tools/build_gpu_plugin_wheel.py
++++ b/jaxlib/tools/build_gpu_plugin_wheel.py
+@@ -73,7 +73,6 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
+     help="NVIDIA wheel versions data",
+ )
+ args = parser.parse_args()
+diff --git a/jaxlib/tools/build_mosaic_wheel.py b/jaxlib/tools/build_mosaic_wheel.py
+index b5b1e0831..6db831298 100644
+--- a/jaxlib/tools/build_mosaic_wheel.py
++++ b/jaxlib/tools/build_mosaic_wheel.py
+@@ -62,7 +62,6 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
+     help="NVIDIA wheel versions data",
+ )
+ 
+-- 
+2.47.3
+

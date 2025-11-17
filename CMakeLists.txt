@@ -487,6 +487,28 @@ if(THEROCK_BUILD_TESTING)
   add_subdirectory(examples)
 endif()
 
+string(REPLACE ";" "," GPU_TARGETS_COMMAS "${THEROCK_AMDGPU_TARGETS}")
+add_custom_command(
+  COMMENT "Building JAX"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/jax.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/jax
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/ml-libs/jax/build/build.py build --rocm_amdgpu_targets=${GPU_TARGETS_COMMAS} --wheels=jaxlib,jax-rocm-plugin,jax-rocm-pjrt --clang_path=/usr/bin/clang-18 --rocm_path=${THEROCK_BINARY_DIR}/dist/rocm --rocm-device-lib-path=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/amdgcn/bitcode --local_xla_path=${CMAKE_SOURCE_DIR}/ml-libs/xla --rocm_version=${ROCM_MAJOR_VERSION}${ROCM_MINOR_VERSION}  --bazel_options=--repo_env=ML_WHEEL_TYPE=release
+  COMMAND touch ${THEROCK_BINARY_DIR}/jax.state
+)
+
+add_custom_command(
+  COMMENT "Building PyTorch"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/pytorch.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/pytorch
+  COMMAND python3 tools/amd_build/build_amd.py
+  COMMAND python3 setup.py bdist_wheel
+  COMMAND touch ${THEROCK_BINARY_DIR}/pytorch.state
+)
+# ToDo: tensorflow, onnx, lama.cpp
+
+
 ################################################################################
 # Testing
 ################################################################################
@@ -515,29 +537,56 @@ therock_subproject_merge_compile_commands()
 # Packaging
 ################################################################################
 
+# Reproducible timestamp in the repository
+execute_process(COMMAND git log -1 --format=%ct OUTPUT_VARIABLE SOURCE_DATE_EPOCH)
+set(ENV{SOURCE_DATE_EPOCH} "${SOURCE_DATE_EPOCH}")
+
 set(ROCM_VERSION "${ROCM_MAJOR_VERSION}.${ROCM_MINOR_VERSION}.${ROCM_PATCH_VERSION}")
 set(APT_DIR ${THEROCK_BINARY_DIR}/apt-repo)
-set(TOOL_DIR ${THEROCK_BINARY_DIR}/build_tools)
+set(TOOL_DIR ${CMAKE_SOURCE_DIR}/build_tools)
 set(MLLIB_DIR ${CMAKE_SOURCE_DIR}/ml-libs)
-set(APT_SUITE trixie)
+set(APT_SUITE stable)
 
-add_custom_target(therock-ppa-debs
-  DEPENDS therock-artifacts
-  COMMAND echo ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix ${BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
-  COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/jax/dist/*.whl
+add_custom_command(
+  COMMENT "Build PPA packages from artifacts"
+  DEPENDS therock-artifacts ${THEROCK_BINARY_DIR}/jax.state
+  OUTPUT ${THEROCK_BINARY_DIR}/ppa-debs.state
+  COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
+  COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/jax/dist/*.whl
   COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
   COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/pytorch/dist/*.whl
   COMMAND touch ${THEROCK_BINARY_DIR}/ppa-debs.state
-  BYPRODUCTS ${THEROCK_BINARY_DIR}/ppa-debs.state
 )
-add_custom_target(therock-ppa-index
-  DEPENDS therock-ppa-debs
-  COMMAND echo cd ${APT_DIR} && dpkg-scanpackages --arch amd64 pool/ > ${APT_DIR}/dists/${APT_SUITE}/main/binary-amd64/Packages
-  COMMAND echo cd ${APT_DIR}/dists/${APT_SUITE} && ${TOOL_DIR}/apt-generate-release.sh > Release
-  COMMAND echo cat ${APT_DIR}/dists/${APT_SUITE}/Release | gpg --batch --yes --default-key Local_ROCM -abs -o ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
-  BYPRODUCTS ${APT_DIR}/dists/${APT_SUITE}/Release ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+
+add_custom_command(
+	COMMENT "Creating GPG keys"
+	DEPENDS ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/template/pgp-key.batch
+	OUTPUT ${APT_DIR}/rpi.private
+	COMMAND sudo gpg --no-tty --batch --gen-key ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/template/pgp-key.batch
+	COMMAND sudo gpg --armor --export Local_ROCM > ${APT_DIR}/rpi.public.asc
+	COMMAND sudo gpg --export Local_ROCM > ${APT_DIR}/rpi.public.gpg
+	COMMAND sudo gpg --armor --export-secret-keys Local_ROCM > ${APT_DIR}/rpi.private
 )
-add_custom_target(therock-ppa-rsync
-  DEPENDS therock-ppa-index
+
+add_custom_command(
+  COMMENT "Indexing PPA archive"
+  DEPENDS ${THEROCK_BINARY_DIR}/ppa-debs.state ${APT_DIR}/rpi.private
+  OUTPUT ${APT_DIR}/dists/${APT_SUITE}/Release ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+  COMMAND cmake -E make_directory ${APT_DIR}/dists/${APT_SUITE}/main/binary-amd64
+  COMMAND cd ${APT_DIR} && dpkg-scanpackages --arch amd64 pool > ${APT_DIR}/dists/${APT_SUITE}/main/binary-amd64/Packages
+  COMMAND cd ${APT_DIR}/dists/${APT_SUITE} && ${TOOL_DIR}/apt-generate-release.sh ${APT_SUITE} > Release
+  COMMAND sudo gpg --batch --yes --import ${APT_DIR}/rpi.private
+  COMMAND cat ${APT_DIR}/dists/${APT_SUITE}/Release | sudo gpg --batch --yes --default-key Local_ROCM -abs -o ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+)
+
+add_custom_command(
+  COMMENT "Uploading PPA archive"
+  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+  OUTPUT ${THEROCK_BINARY_DIR}/ppa-rsync.state
   COMMAND echo rsync -ahP ${APT_DIR}/ thijs@rpi:/home/thijs/rocm-repo
+  COMMAND touch ${THEROCK_BINARY_DIR}/ppa-rsync.state
+)
+
+add_custom_target(therock-ppa
+  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release
 )

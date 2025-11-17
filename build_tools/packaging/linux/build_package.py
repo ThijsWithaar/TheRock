@@ -690,6 +690,10 @@ def filter_components_fromartifactory(pkg_name, artifacts_dir, gfx_arch):
             Path(artifacts_dir) / f"{artifact_prefix}_{component}_{artifact_suffix}"
         )
         filename = source_dir / "artifact_manifest.txt"
+		# With THEROCK_BUNDLE_SYSDEPS=OFF, the sysdeps artifact does not exist
+        if (artifact_prefix == "sysdeps") and not filename.exists():
+            print("Skipping : ", filenamef)
+            continue
         with open(filename, "r", encoding="utf-8") as file:
             for line in file:
 

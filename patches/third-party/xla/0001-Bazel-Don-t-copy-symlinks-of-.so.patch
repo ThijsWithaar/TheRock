@@ -1,0 +1,44 @@
+From 9d2f0f90c30bfdc6b92ee64836acc06c70e493a7 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Wed, 19 Nov 2025 17:30:23 +0100
+Subject: [PATCH] Bazel: Don't copy symlinks of .so
+
+---
+ third_party/gpus/rocm/BUILD.tpl | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/third_party/gpus/rocm/BUILD.tpl b/third_party/gpus/rocm/BUILD.tpl
+index ec1edae410..45664306ee 100644
+--- a/third_party/gpus/rocm/BUILD.tpl
++++ b/third_party/gpus/rocm/BUILD.tpl
+@@ -167,9 +167,9 @@ cc_library(
+ cc_library(
+     name = "rocm_hip",
+     srcs = glob([
+-        "%{rocm_root}/lib/libamdhip*.so*",
+-        "%{rocm_root}/lib/libhiprtc.so*",
+-        "%{rocm_root}/lib/libhiprtc-builtins.so*",
++        "%{rocm_root}/lib/libamdhip*.so",
++        "%{rocm_root}/lib/libhiprtc.so",
++        "%{rocm_root}/lib/libhiprtc-builtins.so",
+     ]),
+     hdrs = glob(["%{rocm_root}/include/hip/**"]),
+     include_prefix = "rocm",
+@@ -192,10 +192,10 @@ cc_library(
+ cc_library(
+     name = "hip_runtime",
+     srcs = glob([
+-        "%{rocm_root}/lib/libamdhip*.so*",
+-        "%{rocm_root}/lib/libhiprtc.so*",
+-        "%{rocm_root}/lib/libhiprtc-builtins.so*",
+-        "%{rocm_root}/lib/libamd_comgr.so*",
++        "%{rocm_root}/lib/libamdhip*.so",
++        "%{rocm_root}/lib/libhiprtc.so",
++        "%{rocm_root}/lib/libhiprtc-builtins.so",
++        "%{rocm_root}/lib/libamd_comgr.so",
+     ]),
+     hdrs = glob(["%{rocm_root}/include/hip/**"]),
+     include_prefix = "rocm",
+-- 
+2.47.3
+

@@ -1224,7 +1224,8 @@
     ],
     "Artifact": "blas",
     "Artifact_Subdir": "hipBLASLt",
-    "Gfxarch": "True"
+    "Gfxarch": "True",
+    "Disable_DWZ": "True"
   },
 
   {
@@ -2181,6 +2182,7 @@
     ],
     "Artifact": "blas",
     "Gfxarch": "True",
+    "Disable_DWZ": "True",
     "Composite": "Yes"
   },
 
