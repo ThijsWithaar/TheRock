@@ -26,4 +26,5 @@ python3 ${CMAKE_SOURCE_DIR}/ml-libs/jax/build/build.py build \
   --local_xla_path=${CMAKE_SOURCE_DIR}/ml-libs/xla \
   --rocm_path=${THEROCK_BINARY_DIR}/dist/rocm \
   --rocm-device-lib-path=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/amdgcn/bitcode \
-  --rocm_version=70
+  --rocm_version=70 \
+  --bazel_options=--repo_env=ML_WHEEL_TYPE=release

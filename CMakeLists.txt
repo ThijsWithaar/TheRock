@@ -476,6 +476,50 @@ add_subdirectory(third-party)
 add_subdirectory(base)
 add_subdirectory(compiler)
 add_subdirectory(core)
+
+therock_cmake_subproject_declare(acpp
+  USE_DIST_AMDGPU_TARGETS
+  EXTERNAL_SOURCE_DIR "compiler/AdaptiveCpp"
+  BINARY_DIR "acpp"
+  CMAKE_ARGS
+	-DACPP_EXPERIMENTAL_LLVM=ON
+#      -DLLVM_DIR=${THEROCK_BINARY_DIR}/dist/rocm/lib/cmake/llvm
+#      -DCLANG_EXECUTABLE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/bin/clang++
+#      -DCLANG_INCLUDE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/include
+##	  -DLLVMSPIRV_BRANCH=llvm_release_200
+
+	-DLLVM_DIR=/usr/lib/cmake
+	-DLLVM_REQUIRES_RTTI=ON
+	-DDLLVM_ENABLE_RTTI=ON
+	-DCLANG_EXECUTABLE_PATH=/usr/bin/clang-18
+	-DCLANG_INCLUDE_PATH=/usr/include/llvm-18
+
+	-DROCM_DEVICE_LIBS_PATH=${THEROCK_BINARY_DIR}/compiler/amd-llvm/stage/lib/llvm/amdgcn/bitcode/
+	-DACPP_LLC_PATH=/usr/bin/llc
+	-DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm
+	-DHIP_PLATFORM="amd"
+	-DLibElf_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DNUMA_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DCMAKE_FIND_ROOT_PATH=/usr/include
+	-DLLVM_EXTERNAL_SPIRV_LLVM_TRANSLATOR_SOURCE_DIR="${THEROCK_SOURCE_DIR}/compiler/spirv-llvm-translator"
+#  COMPILER_TOOLCHAIN
+#    amd-hip
+  BUILD_DEPS
+	hip-clr
+	amd-comgr
+	ROCR-Runtime
+	rocm-cmake
+    rocm-core
+	amd-llvm
+  RUNTIME_DEPS
+	amd-llvm
+)
+therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
+therock_cmake_subproject_activate(acpp)
+therock_provide_artifact(acpp TARGET_NEUTRAL
+    DESCRIPTOR compiler/artifact-acpp.toml
+    COMPONENTS bin dev)
+
 # Note that rocprofiler-register is in base and is what higher level clients
 # depend on. The profiler itself is independent.
 add_subdirectory(profiler)
@@ -553,8 +597,8 @@ add_custom_command(
   OUTPUT ${THEROCK_BINARY_DIR}/ppa-debs.state
   COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
   COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/jax/dist/*.whl
+  COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/pytorch/dist/*.whl
   COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
-  COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/pytorch/dist/*.whl
   COMMAND touch ${THEROCK_BINARY_DIR}/ppa-debs.state
 )
 
@@ -568,6 +612,7 @@ add_custom_command(
 	COMMAND sudo gpg --armor --export-secret-keys Local_ROCM > ${APT_DIR}/rpi.private
 )
 
+# See https://earthly.dev/blog/creating-and-hosting-your-own-deb-packages-and-apt-repo/
 add_custom_command(
   COMMENT "Indexing PPA archive"
   DEPENDS ${THEROCK_BINARY_DIR}/ppa-debs.state ${APT_DIR}/rpi.private
@@ -577,6 +622,7 @@ add_custom_command(
   COMMAND cd ${APT_DIR}/dists/${APT_SUITE} && ${TOOL_DIR}/apt-generate-release.sh ${APT_SUITE} > Release
   COMMAND sudo gpg --batch --yes --import ${APT_DIR}/rpi.private
   COMMAND cat ${APT_DIR}/dists/${APT_SUITE}/Release | sudo gpg --batch --yes --default-key Local_ROCM -abs -o ${APT_DIR}/dists/${APT_SUITE}/Release.gpg
+  COMMAND sudo gpg --batch --yes --default-key Local_ROCM --clearsign -o ${APT_DIR}/dists/${APT_SUITE}/InRelease ${APT_DIR}/dists/${APT_SUITE}/Release
 )
 
 add_custom_command(

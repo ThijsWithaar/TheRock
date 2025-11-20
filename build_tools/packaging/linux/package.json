@@ -169,8 +169,8 @@
       "python3",
       "libc6",
       "libstdc++6|libstdc++8",
-      "libstdc++-5-dev|libstdc++-7-dev|libstdc++-11-dev",
-      "libgcc-5-dev|libgcc-7-dev|libgcc-11-dev"
+      "libstdc++-5-dev|libstdc++-7-dev|libstdc++-11-dev|libstdc++-14-dev",
+      "libgcc-5-dev|libgcc-7-dev|libgcc-11-dev|libgcc-14-dev"
     ],
     "RPMRequires": [
       "rocm-core",
@@ -210,6 +210,33 @@
     "Disable_DWZ": "True"
   },
   {
+    "Package": "acpp",
+    "Version": "25.10.0",
+    "Architecture": "amd64",
+    "BuildArch": "x86_64",
+    "DEBDepends": [
+      "rocm-core",
+      "rocm-llvm"
+    ],
+    "Maintainer": "Aksel Alpay <aksel.alpay@uni-heidelberg.de>",
+    "Description_Short": "Adaptive CPP SyCL compiler",
+    "Description_Long": "Compiler for SyCL, CUDA with AMD GPU support, based on LLVM",
+    "Section": "devel",
+    "Priority": "optional",
+    "Group": "System Environment/Libraries",
+    "License": "BSD-2-Clause license ",
+    "Vendor": "Adaptive CPP",
+    "Homepage": "https://adaptivecpp.github.io/",
+    "Components": [
+      "bin",
+      "dev"
+    ],
+    "Artifact": "acpp",
+    "Artifact_Subdir": "acpp",
+    "Gfxarch": "False",
+    "Disable_DWZ": "True"
+  },
+  {
     "Package": "rocm-llvm-devel",
     "Version": "",
     "Architecture": "amd64",
@@ -220,8 +247,8 @@
       "python3",
       "libc6",
       "libstdc++6|libstdc++8",
-      "libstdc++-5-dev|libstdc++-7-dev|libstdc++-11-dev",
-      "libgcc-5-dev|libgcc-7-dev|libgcc-11-dev"
+      "libstdc++-5-dev|libstdc++-7-dev|libstdc++-11-dev|libstdc++-14-dev",
+      "libgcc-5-dev|libgcc-7-dev|libgcc-11-dev|libgcc-14-dev"
     ],
     "RPMRequires": [
       "rocm-core",

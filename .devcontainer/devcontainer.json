@@ -2,7 +2,8 @@
 	"name": "ROCM (trixie)",
 	"dockerFile": "../dockerfiles/debian_trixie.Dockerfile",
 	"build": {
-		"target": "rocm_trixie"
+		"target": "rocm_trixie",
+		"cacheFrom": "thijswithaar/debian:rocm_trixie"
 	},
 	"runArgs": [
 		"--network=host",

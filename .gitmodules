@@ -48,7 +48,7 @@
 [submodule "pytorch"]
 	path = ml-libs/pytorch
 	url = https://github.com/ROCm/pytorch
-[submodule "compiler/AdaptiveCpp"]
+[submodule "AdaptiveCpp"]
 	path = compiler/AdaptiveCpp
 	url = https://github.com/AdaptiveCpp/AdaptiveCpp.git
 	branch = develop
