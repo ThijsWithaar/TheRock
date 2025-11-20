@@ -17,9 +17,11 @@ find_library(NUMA_INCLUDE_LIBRARIES
 
 find_package_handle_standard_args(NUMA DEFAULT_MSG NUMA_INCLUDE_LIBRARIES)
 
-add_library(numa::numa UNKNOWN IMPORTED)
-set_target_properties(numa::numa PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${NUMA_INCLUDE_DIRS}")
-set_target_properties(numa::numa PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C" IMPORTED_LOCATION "${NUMA_INCLUDE_LIBRARIES}")
+if (NOT TARGET numa::numa)
+	add_library(numa::numa UNKNOWN IMPORTED)
+	set_target_properties(numa::numa PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${NUMA_INCLUDE_DIRS}")
+	set_target_properties(numa::numa PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C" IMPORTED_LOCATION "${NUMA_INCLUDE_LIBRARIES}")
+endif()
 
 if(COMMAND set_package_properties)
 	set_package_properties(numa PROPERTIES DESCRIPTION "numa")

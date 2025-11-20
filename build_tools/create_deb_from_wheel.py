@@ -24,6 +24,8 @@ def pip2apt(pip_name:str):
     apt_name = f'python3-{pip_name.replace('_','-')}'
     if pip_name in ['scipy', 'numpy', 'optree', 'ml_dtypes', 'jaxlib', 'jax-rocm60-pjrt']:
         return apt_name
+    if pip_name == 'pyyaml':
+        return 'python3-yaml'
     elif subprocess.run(['apt-cache','show', apt_name],
                         stderr=subprocess.DEVNULL,
                         stdout=subprocess.DEVNULL).returncode == 0:
