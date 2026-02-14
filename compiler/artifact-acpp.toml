@@ -1,0 +1,11 @@
+[components.bin."acpp/stage"]
+include = [
+  "bin/**",
+  "etc/**",
+  "lib/**",
+]
+[components.dev."acpp/stage"]
+include = [
+  "include/**",
+  "share/**",
+]

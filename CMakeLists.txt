@@ -434,6 +434,50 @@ add_subdirectory(base)
 add_subdirectory(compiler)
 add_subdirectory(core)
 add_subdirectory(debug-tools)
+
+therock_cmake_subproject_declare(acpp
+  USE_DIST_AMDGPU_TARGETS
+  EXTERNAL_SOURCE_DIR "compiler/AdaptiveCpp"
+  BINARY_DIR "acpp"
+  CMAKE_ARGS
+	-DACPP_EXPERIMENTAL_LLVM=ON
+#      -DLLVM_DIR=${THEROCK_BINARY_DIR}/dist/rocm/lib/cmake/llvm
+#      -DCLANG_EXECUTABLE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/bin/clang++
+#      -DCLANG_INCLUDE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/include
+##	  -DLLVMSPIRV_BRANCH=llvm_release_200
+
+	-DLLVM_DIR=/usr/lib/cmake
+	-DLLVM_REQUIRES_RTTI=ON
+	-DDLLVM_ENABLE_RTTI=ON
+	-DCLANG_EXECUTABLE_PATH=/usr/bin/clang-18
+	-DCLANG_INCLUDE_PATH=/usr/include/llvm-18
+
+	-DROCM_DEVICE_LIBS_PATH=${THEROCK_BINARY_DIR}/compiler/amd-llvm/stage/lib/llvm/amdgcn/bitcode/
+	-DACPP_LLC_PATH=/usr/bin/llc
+	-DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm
+	-DHIP_PLATFORM="amd"
+	-DLibElf_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DNUMA_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DCMAKE_FIND_ROOT_PATH=/usr/include
+	-DLLVM_EXTERNAL_SPIRV_LLVM_TRANSLATOR_SOURCE_DIR="${THEROCK_SOURCE_DIR}/compiler/spirv-llvm-translator"
+#  COMPILER_TOOLCHAIN
+#    amd-hip
+  BUILD_DEPS
+	hip-clr
+	amd-comgr
+	ROCR-Runtime
+	rocm-cmake
+    rocm-core
+	amd-llvm
+  RUNTIME_DEPS
+	amd-llvm
+)
+therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
+therock_cmake_subproject_activate(acpp)
+therock_provide_artifact(acpp TARGET_NEUTRAL
+    DESCRIPTOR compiler/artifact-acpp.toml
+    COMPONENTS bin dev)
+
 # Note that rocprofiler-register is in base and is what higher level clients
 # depend on. The profiler itself is independent.
 add_subdirectory(profiler)
