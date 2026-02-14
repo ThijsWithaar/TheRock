@@ -56,6 +56,10 @@
 [submodule "tensorflow"]
 	path = ml-libs/tensorflow
 	url = https://github.com/ROCm/tensorflow-upstream
+[submodule "AdaptiveCpp"]
+	path = compiler/AdaptiveCpp
+	url = https://github.com/AdaptiveCpp/AdaptiveCpp.git
+	branch = develop
 [submodule "xla"]
 	path = ml-libs/xla
 	url = https://github.com/openxla/xla

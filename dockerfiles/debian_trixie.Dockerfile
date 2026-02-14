@@ -13,6 +13,7 @@ RUN sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/de
 
 ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev"
 ARG PKG_JAX="bazel-7.4.1 binutils-gold libxml2-dev patchelf clang-18 lld-18"
+ARG PKG_ACPP="llvm-18 llvm-18-dev"
 
 RUN apt update && apt install --no-upgrade --no-install-recommends -y -qq \
 	curl git git-lfs file fakeroot rsync cpio build-essential cmake ninja-build ccache \
