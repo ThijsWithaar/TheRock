@@ -1,0 +1,94 @@
+From bcab0097f7b1a09796bcf1229ec79958268d45fd Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Mon, 16 Feb 2026 16:02:33 +0100
+Subject: [PATCH] tensorflow debian build: cuda-optional
+
+---
+ .bazelrc                                        | 8 ++++----
+ build_rocm_python3                              | 9 +++++----
+ tensorflow/tools/pip_package/modify_setup_py.py | 1 -
+ 3 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/.bazelrc b/.bazelrc
+index 316949455a0..295c08cbbc1 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -288,8 +288,8 @@ common:mkl_aarch64_threadpool -c opt
+ common:mkl_aarch64 --config=mkl_aarch64_threadpool
+ 
+ # Default CUDA, CUDNN and NVSHMEM versions.
+-common:cuda_version --repo_env=HERMETIC_CUDA_VERSION="12.5.1"
+-common:cuda_version --repo_env=HERMETIC_CUDNN_VERSION="9.3.0"
++common:cuda_version --repo_env=HERMETIC_CUDA_VERSION="12.2.0"
++common:cuda_version --repo_env=HERMETIC_CUDNN_VERSION="9.1.1"
+ common:cuda_version --repo_env=HERMETIC_NVSHMEM_VERSION="3.2.5"
+ 
+ # CUDA: This config refers to building CUDA op kernels with nvcc.
+@@ -396,8 +396,8 @@ common:rocm_clang_official --host_linkopt="-fuse-ld=lld"
+ 
+ common:rocm_ci --config=rocm_clang_official
+ common:rocm_ci_hermetic --config=rocm_clang_official
+-common:rocm_ci_hermetic --repo_env="OS=ubuntu_22.04"
+-common:rocm_ci_hermetic --repo_env="ROCM_VERSION=6.2.0"
++common:rocm_ci_hermetic --repo_env="OS=debian_trixie"
++common:rocm_ci_hermetic --repo_env="ROCM_VERSION=7.1.1"
+ common:rocm_ci_hermetic --@local_config_rocm//rocm:use_rocm_hermetic_rpath=True
+ 
+ common:sycl --config=clang_local
+diff --git a/build_rocm_python3 b/build_rocm_python3
+index 6f4d977b6b4..feda34c1488 100755
+--- a/build_rocm_python3
++++ b/build_rocm_python3
+@@ -46,6 +46,7 @@ else
+     RESOURCE_OPTION=""
+ fi
+ 
++PIP_OPTIONS="--break-system-packages --upgrade"
+ if [ -f /usertools/rocm.bazelrc ]; then
+ 	# Use the bazelrc files in /usertools if available
+     	TF_PKG_LOC=bazel-bin/tensorflow/tools/pip_package/wheel_house
+@@ -55,13 +56,13 @@ if [ -f /usertools/rocm.bazelrc ]; then
+         export project_name=tf_nightly_rocm
+ 		python3 tensorflow/tools/ci_build/update_version.py --nightly --rocm_version &&
+ 		bazel --bazelrc=/usertools/rocm.bazelrc build $RESOURCE_OPTION --config=rocm --repo_env=WHEEL_NAME=tf_nightly_rocm --action_env=project_name=tf_nightly_rocm --action_env=TF_PYTHON_VERSION=$PYTHON_VERSION tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tf_nightly_rocm*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tf_nightly_rocm*.whl
+ 	else
+ 		# Remove any previous builds and build release
+ 	        rm -f $TF_PKG_LOC/tensorflow*.whl
+ 		python3 tensorflow/tools/ci_build/update_version.py --rocm_version &&
+ 		bazel --bazelrc=/usertools/rocm.bazelrc build $RESOURCE_OPTION --config=rocm --repo_env=WHEEL_NAME=tensorflow_rocm --action_env=project_name=tensorflow_rocm --action_env=TF_PYTHON_VERSION=$PYTHON_VERSION tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tensorflow*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tensorflow*.whl
+ 	fi
+ else
+ 	# Legacy style: run configure then build
+@@ -71,11 +72,11 @@ else
+ 		# Remove any previous builds and build nightly
+ 	        rm -f $TF_PKG_LOC/tf_nightly_rocm*.whl
+ 		bazel build $RESOURCE_OPTION --config=opt --config=rocm --repo_env=WHEEL_NAME=tf_nightly_rocm --action_env=project_name=tf_nightly_rocm //tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tf_nightly_rocm*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tf_nightly_rocm*.whl
+ 	else
+ 		# Remove any previous builds and build release
+ 	        rm -f $TF_PKG_LOC/tensorflow*.whl
+ 		bazel build $RESOURCE_OPTION --config=opt --config=rocm --repo_env=WHEEL_NAME=tensorflow_rocm --action_env=project_name=tensorflow_rocm //tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tensorflow*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tensorflow*.whl
+ 	fi
+ fi
+diff --git a/tensorflow/tools/pip_package/modify_setup_py.py b/tensorflow/tools/pip_package/modify_setup_py.py
+index 7f78a437060..752236c65b4 100644
+--- a/tensorflow/tools/pip_package/modify_setup_py.py
++++ b/tensorflow/tools/pip_package/modify_setup_py.py
+@@ -70,7 +70,6 @@ if __name__ == "__main__":
+   parser.add_argument(
+       "--nvidia_wheel_versions_data",
+       default=None,
+-      required=True,
+       help="NVIDIA wheel versions data",
+   )
+   parser.add_argument(
+-- 
+2.47.3
+

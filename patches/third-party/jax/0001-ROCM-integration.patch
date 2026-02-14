@@ -1,0 +1,110 @@
+From 844856aed2942f0d63f89c9161d8483e502efd88 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 7 Jun 2026 08:24:43 +0200
+Subject: [PATCH] Debian package build
+
+---
+ .bazelrc                                |  2 +-
+ build/build.py                          | 10 ++++++++++
+ jaxlib/tools/build_gpu_kernels_wheel.py |  2 +-
+ jaxlib/tools/build_gpu_plugin_wheel.py  |  2 +-
+ jaxlib/tools/build_mosaic_wheel.py      |  2 +-
+ setup.py                                |  2 +-
+ 6 files changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/.bazelrc b/.bazelrc
+index 5e7b6af95..b86e3358a 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -236,7 +236,7 @@ common:rocm_base --config=clang_local
+ common:rocm_base --crosstool_top=@local_config_rocm//crosstool:toolchain
+ common:rocm_base --define=using_rocm=true --define=using_rocm_hipcc=true
+ common:rocm_base --repo_env TF_NEED_ROCM=1
+-common:rocm_base --action_env TF_ROCM_AMDGPU_TARGETS="gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100,gfx1200,gfx1201"
++common:rocm_base --action_env TF_ROCM_AMDGPU_TARGETS="gfx1100,gfx1103,gfx1200"
+ 
+ # Build with hipcc for ROCm and clang for the host.
+ common:rocm --config=rocm_base
+diff --git a/build/build.py b/build/build.py
+index d13fdab1c..07f4e4ff8 100755
+--- a/build/build.py
++++ b/build/build.py
+@@ -268,6 +268,13 @@ def add_artifact_subcommand_arguments(parser: argparse.ArgumentParser):
+       help="Path to the ROCm toolkit.",
+   )
+ 
++  rocm_group.add_argument(
++      "--rocm-device-lib-path",
++      type=str,
++      default="",
++      help="Path to the ROCm device libraries.",
++  )
++
+   # Compile Options
+   compile_group = parser.add_argument_group('Compile Options')
+ 
+@@ -630,6 +637,9 @@ async def main():
+     if args.rocm_path:
+       logging.debug("ROCm toolkit path: %s", args.rocm_path)
+       wheel_build_command_base.append(f"--action_env=ROCM_PATH=\"{args.rocm_path}\"")
++    if args.rocm_device_lib_path:
++      logging.debug("ROCm device library path: %s", args.rocm_device_lib_path)
++      wheel_build_command_base.append(f"--action_env=HIP_DEVICE_LIB_PATH=\"{args.rocm_device_lib_path}\"")
+     if args.rocm_amdgpu_targets:
+       logging.debug("ROCm AMD GPU targets: %s", args.rocm_amdgpu_targets)
+       wheel_build_command_base.append(
+diff --git a/jaxlib/tools/build_gpu_kernels_wheel.py b/jaxlib/tools/build_gpu_kernels_wheel.py
+index 4ecb803eb..20babb2f3 100644
+--- a/jaxlib/tools/build_gpu_kernels_wheel.py
++++ b/jaxlib/tools/build_gpu_kernels_wheel.py
+@@ -67,7 +67,7 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
++    required=False,
+     help="NVIDIA wheel versions data",
+ )
+ args = parser.parse_args()
+diff --git a/jaxlib/tools/build_gpu_plugin_wheel.py b/jaxlib/tools/build_gpu_plugin_wheel.py
+index 7ef6fdaae..8256a89a9 100644
+--- a/jaxlib/tools/build_gpu_plugin_wheel.py
++++ b/jaxlib/tools/build_gpu_plugin_wheel.py
+@@ -73,7 +73,7 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
++    required=False,
+     help="NVIDIA wheel versions data",
+ )
+ args = parser.parse_args()
+diff --git a/jaxlib/tools/build_mosaic_wheel.py b/jaxlib/tools/build_mosaic_wheel.py
+index b5b1e0831..6df981c56 100644
+--- a/jaxlib/tools/build_mosaic_wheel.py
++++ b/jaxlib/tools/build_mosaic_wheel.py
+@@ -62,7 +62,7 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
++    required=False,
+     help="NVIDIA wheel versions data",
+ )
+ 
+diff --git a/setup.py b/setup.py
+index 4a04c0d33..9ec4190f7 100644
+--- a/setup.py
++++ b/setup.py
+@@ -76,7 +76,7 @@ setup(
+         'cpu': [],
+ 
+         # Used only for CI builds that install JAX from github HEAD.
+-        'ci': [f'jaxlib=={_latest_jaxlib_version_on_pypi}'],
++        #'ci': [f'jaxlib=={_latest_jaxlib_version_on_pypi}'],
+ 
+         # Cloud TPU VM jaxlib can be installed via:
+         # $ pip install "jax[tpu]"
+-- 
+2.47.3
+
