@@ -46,3 +46,16 @@
 	path = debug-tools/rocgdb/source
 	url = https://github.com/ROCm/rocgdb.git
 	branch = amd-staging-rocgdb-16
+[submodule "jax"]
+	path = ml-libs/jax
+	url = https://github.com/jax-ml/jax.git
+	branch = jax-v0.9.0
+[submodule "pytorch"]
+	path = ml-libs/pytorch
+	url = https://github.com/ROCm/pytorch
+[submodule "tensorflow"]
+	path = ml-libs/tensorflow
+	url = https://github.com/ROCm/tensorflow-upstream
+[submodule "xla"]
+	path = ml-libs/xla
+	url = https://github.com/openxla/xla
