@@ -15,6 +15,7 @@ ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev python3-zstandard"
 ARG PKG_JAX="bazel-7.4.1 binutils-gold libxml2-dev patchelf clang-18 lld-18"
 ARG PKG_PYTORCH="python3-build python3-six libvulkan-dev glslc" 
 # pytorch requires a newer python3-scikit-build-core, use pip3 for that
+ARG PKG_ACPP="llvm-19 llvm-19-dev libclang-19-dev libclang-rt-19-dev libomp-19-dev libedit-dev spirv-tools"
 
 RUN apt update && apt install --no-upgrade --no-install-recommends -y -qq \
 	curl git git-lfs file fakeroot rsync cpio build-essential cmake ninja-build ccache \

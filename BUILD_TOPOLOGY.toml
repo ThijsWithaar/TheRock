@@ -913,3 +913,8 @@ type = "target-neutral"
 artifact_deps = []
 feature_group = "EMULATION"
 disable_platforms = ["windows"]
+
+[artifacts.acpp]
+artifact_group = "compiler"
+type = "target-neutral"
+disable_platforms = ["windows"]

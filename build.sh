@@ -36,3 +36,10 @@ GPU_TARGETS_COMMAS="gfx1100,gfx1103"
 
 ## therock-deb
 #/mnt/workspace/build_tools/packaging/linux/build_package.py --artifacts-dir /mnt/workspace/out/build/linux-release-package/artifacts --dest-dir /mnt/workspace/out/build/linux-release-package/apt-repo/pool/main --pkg-type DEB --rocm-version 10.1.0 --version-suffix 1 --target gfx110X-all
+
+## Adaptive C++
+cd ${CMAKE_SOURCE_DIR}/compiler/AdaptiveCpp
+if [ ! -d ${THEROCK_BINARY_DIR}/acpp.build ]; then
+    cmake -B${THEROCK_BINARY_DIR}/acpp.build -DCMAKE_INSTALL_PREFIX=/opt/acpp -DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm -DCPACK_GENERATOR=DEB -DGPU_TARGETS=${GPU_TARGETS_COMMAS} -DCMAKE_CXX_COMPILER=clang++-18 -DWITH_OPENCL_BACKEND=OFF
+fi
+#cmake --build ${THEROCK_BINARY_DIR}/acpp.build --target package

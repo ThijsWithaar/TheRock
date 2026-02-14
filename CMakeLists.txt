@@ -510,6 +510,48 @@ add_subdirectory(media-libs)
 # storage-libs (hipfile) must be added before profiler: rocprofiler-sdk performs
 # optional find_package(hipfile) for hipFILE trace feature detection.
 add_subdirectory(storage-libs)
+
+therock_cmake_subproject_declare(acpp
+  USE_DIST_AMDGPU_TARGETS
+  EXTERNAL_SOURCE_DIR "compiler/AdaptiveCpp"
+  BINARY_DIR "acpp"
+  CMAKE_ARGS
+	-DACPP_EXPERIMENTAL_LLVM=ON
+#      -DLLVM_DIR=${THEROCK_BINARY_DIR}/dist/rocm/lib/cmake/llvm
+#      -DCLANG_EXECUTABLE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/bin/clang++
+#      -DCLANG_INCLUDE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/include
+##	  -DLLVMSPIRV_BRANCH=llvm_release_200
+
+	-DLLVM_DIR=/usr/lib/cmake
+	-DLLVM_REQUIRES_RTTI=ON
+	-DDLLVM_ENABLE_RTTI=ON
+	-DCLANG_EXECUTABLE_PATH=/usr/bin/clang-18
+	-DCLANG_INCLUDE_PATH=/usr/include/llvm-18
+
+	-DROCM_DEVICE_LIBS_PATH=${THEROCK_BINARY_DIR}/compiler/amd-llvm/stage/lib/llvm/amdgcn/bitcode/
+	-DACPP_LLC_PATH=/usr/bin/llc
+	-DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm
+	-DHIP_PLATFORM="amd"
+	-DLibElf_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DNUMA_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DCMAKE_FIND_ROOT_PATH=/usr/include
+	-DLLVM_EXTERNAL_SPIRV_LLVM_TRANSLATOR_SOURCE_DIR="${THEROCK_SOURCE_DIR}/compiler/spirv-llvm-translator"
+#  COMPILER_TOOLCHAIN
+#    amd-hip
+  BUILD_DEPS
+	hip-clr
+	amd-comgr
+	ROCR-Runtime
+	rocm-cmake
+    rocm-core
+	amd-llvm
+  RUNTIME_DEPS
+	amd-llvm
+)
+# therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
+# therock_cmake_subproject_activate(acpp)
+# therock_provide_artifact(acpp TARGET_NEUTRAL DESCRIPTOR compiler/artifact-acpp.toml COMPONENTS bin dev)
+
 # Note that rocprofiler-register is in base and is what higher level clients
 # depend on. The profiler itself is independent.
 add_subdirectory(profiler)
@@ -565,8 +607,17 @@ add_custom_target(therock-hipfire ALL DEPENDS ${THEROCK_BINARY_DIR}/hipfire.stat
 
 
 add_custom_command(
-  COMMENT "Building Llama.C++"
+  COMMENT "Building AdaptiveC++"
   DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/acpp_external.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/compiler/AdaptiveCpp
+  COMMAND cmake -B${THEROCK_BINARY_DIR}/acpp.build -DCMAKE_INSTALL_PREFIX=/opt/acpp -DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm -DCPACK_GENERATOR=DEB -DGPU_TARGETS=${GPU_TARGETS_COMMAS} -DCMAKE_CXX_COMPILER=clang++-19
+  COMMAND cmake --build ${THEROCK_BINARY_DIR}/acpp.build --target package
+  COMMAND touch ${THEROCK_BINARY_DIR}/acpp_external.state
+)
+add_custom_target(therock-acpp ALL DEPENDS ${THEROCK_BINARY_DIR}/acpp_external.state)
+
+
 add_custom_command(
   COMMENT "Building Llama.C++"
   DEPENDS therock-dist therock-acpp
@@ -627,7 +678,7 @@ set(APT_SUITE stable)
 
 add_custom_command(
   COMMENT "Build PPA packages from artifacts"
-  DEPENDS therock-artifacts therock-jax therock-torch therock-hipfire therock-llama-cpp
+  DEPENDS therock-artifacts therock-jax therock-torch therock-hipfire therock-acpp
   OUTPUT ${THEROCK_BINARY_DIR}/ppa-debs.state
   COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
   # ToDo: Re-Do ACCP, to install it outside of /opt/rocm, with --install-prefix / --pkg-names acpp
@@ -669,5 +720,5 @@ add_custom_command(
   COMMAND touch ${THEROCK_BINARY_DIR}/ppa-rsync.state
 )
 
-add_custom_target(therock-ppa
+add_custom_target(therock-ppa ALL
   DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release ${THEROCK_BINARY_DIR}/ppa-debs.state therock-deb)

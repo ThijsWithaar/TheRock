@@ -1,0 +1,286 @@
+From 17023ed4c63d04ac1afe886fe6c2b7a81013baf0 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Thu, 20 Nov 2025 18:02:51 +0100
+Subject: [PATCH] Support LLVM 22
+
+---
+ CMakeLists.txt                                |  6 +++++
+ include/hipSYCL/compiler/Frontend.hpp         | 16 +++++-------
+ src/compiler/cbs/IRUtils.cpp                  |  4 +--
+ src/compiler/llvm-to-backend/CMakeLists.txt   |  6 ++++-
+ .../GlobalSizesFitInI32OptPass.cpp            | 21 ++++++++++++++-
+ src/compiler/stdpar/SyncElision.cpp           | 26 ++++++++++++++++---
+ src/runtime/CMakeLists.txt                    | 12 +++------
+ 7 files changed, 66 insertions(+), 25 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 38a866b7..57eac315 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -121,6 +121,7 @@ endif()
+ list(INSERT CMAKE_MODULE_PATH 0 "${ACPP_SOURCE_ROOT}/cmake/")
+ find_package(CUDA QUIET)
+ find_package(HIP QUIET HINTS ${ROCM_PATH} ${ROCM_PATH}/lib/cmake)
++find_package(NUMA REQUIRED)
+ 
+ #set(WITH_CUDA_NVCXX_ONLY FALSE CACHE BOOL "(Deprecated) Whether to target CUDA exclusively with nvc++")
+ 
+@@ -1018,6 +1019,11 @@ install(FILES
+   DESTINATION ${ADAPTIVECPP_INSTALL_CMAKE_DIR}
+ )
+ 
++if(UNIX)
++	file(WRITE ${ACPP_BINARY_ROOT}/30-adaptivecpp.conf "${ACPP_INSTALL_PREFIX}/lib/hipSYCL\n")
++	install(FILES ${ACPP_BINARY_ROOT}/30-adaptivecpp.conf DESTINATION etc/ld.so.conf.d)
++endif()
++
+ install(EXPORT install_exports
+   FILE "adaptivecpp-targets.cmake"
+   NAMESPACE AdaptiveCpp::
+diff --git a/include/hipSYCL/compiler/Frontend.hpp b/include/hipSYCL/compiler/Frontend.hpp
+index de16e91d..485c0222 100644
+--- a/include/hipSYCL/compiler/Frontend.hpp
++++ b/include/hipSYCL/compiler/Frontend.hpp
+@@ -88,7 +88,7 @@ class CompleteCallSet : public clang::RecursiveASTVisitor<CompleteCallSet> {
+         // type that can be constructed on the GPU also can and will be destructed).
+         if(auto Ptr = llvm::dyn_cast_or_null<clang::PointerType>(Callee->getThisType()->getCanonicalTypeUnqualified()))
+           if(auto Record = llvm::dyn_cast<clang::RecordType>(Ptr->getPointeeType()))
+-            if(auto RecordDecl = llvm::dyn_cast<clang::CXXRecordDecl>(Record->getDecl()))
++            if(auto RecordDecl = Record->getAsCXXRecordDecl()) // llvm::dyn_cast<clang::CXXRecordDecl>(Record->getDecl()))
+               if(auto DtorDecl = RecordDecl->getDestructor())
+                 TraverseDecl(DtorDecl);
+       }
+@@ -149,8 +149,7 @@ inline std::string buildKernelNameFromRecordType(const clang::QualType &RecordTy
+ inline std::string buildKernelName(clang::RecordDecl* D, clang::MangleContext *Mangler) {
+   assert(D);
+   assert(Mangler);
+-  auto DeclName = buildKernelNameFromRecordType(
+-      Mangler->getASTContext().getTypeDeclType(D), Mangler);
++  std::string DeclName = buildKernelNameFromRecordType(Mangler->getASTContext().getTypeDeclType(static_cast<clang::TypeDecl*>(D)), Mangler);
+   return "__acpp_kernel_" + DeclName;
+ }
+ 
+@@ -558,8 +557,8 @@ private:
+       // If name tag is invalid, assume unnamed
+       return true;
+ 
+-    if(NameTag->getDecl()) {
+-      return NameTag->getDecl()->getQualifiedNameAsString() ==
++    if(auto* NameTagDecl = NameTag->getAsTagDecl()) {
++      return NameTagDecl->getQualifiedNameAsString() ==
+              "__acpp_unnamed_kernel";
+     }
+ 
+@@ -620,10 +619,10 @@ private:
+       // Try to get the declaration of the kernel functor for error
+       // diagnostics
+       auto B = KernelBodies.find(F);
+-      clang::Decl* ErrorDecl = F;
++      const clang::Decl* ErrorDecl = F;
+ 
+       if(B != KernelBodies.end()) {
+-        ErrorDecl = B->second->getDecl();
++        ErrorDecl = B->second->getAsCXXRecordDecl(); //->getAs<clang::Decl>(); // ->getDecl();
+       }
+ 
+       auto SL = ErrorDecl->getSourceRange().getBegin();
+@@ -730,8 +729,7 @@ private:
+           if(KernelBody->isLambda()) {
+             if (KernelFunctorType->getAsCXXRecordDecl() &&
+                 KernelFunctorType->getAsCXXRecordDecl()->isLambda()) {
+-              auto SL = llvm::dyn_cast<clang::CXXRecordDecl>(
+-                            KernelFunctorType->getDecl())
++              auto SL = KernelFunctorType->getAsCXXRecordDecl()
+                             ->getSourceRange()
+                             .getBegin();
+               auto ID =
+diff --git a/src/compiler/cbs/IRUtils.cpp b/src/compiler/cbs/IRUtils.cpp
+index 6bed0abf..cef74d7f 100644
+--- a/src/compiler/cbs/IRUtils.cpp
++++ b/src/compiler/cbs/IRUtils.cpp
+@@ -493,8 +493,8 @@ llvm::AllocaInst *getLoopStateAllocaForLoad(llvm::LoadInst &LInst) {
+ 
+ // bring along the llvm.dbg.value intrinsics when cloning values
+ void copyDgbValues(llvm::Value *From, llvm::Value *To, llvm::Instruction *InsertBefore) {
+-  llvm::SmallVector<llvm::DbgValueInst *, 1> DbgValues;
+-  llvm::findDbgValues(DbgValues, From);
++  llvm::SmallVector<llvm::DbgVariableRecord *, 1> DbgValues;
++  llvm::findDbgValues(From, DbgValues);
+   if (!DbgValues.empty()) {
+     auto *DbgValue = DbgValues.back();
+     llvm::DIBuilder DbgBuilder{*InsertBefore->getParent()->getParent()->getParent()};
+diff --git a/src/compiler/llvm-to-backend/CMakeLists.txt b/src/compiler/llvm-to-backend/CMakeLists.txt
+index 98066dd5..f26c5ca5 100644
+--- a/src/compiler/llvm-to-backend/CMakeLists.txt
++++ b/src/compiler/llvm-to-backend/CMakeLists.txt
+@@ -182,7 +182,7 @@ if(WITH_SSCP_COMPILER)
+     set(LLVMSPIRV_RELATIVE_PATH ${LLVMSPIRV_RELATIVE_INSTALLDIR}/bin/llvm-spirv)
+ 
+     ExternalProject_Add(LLVMSpirvTranslator
+-      GIT_REPOSITORY https://github.com/AdaptiveCpp/SPIRV-LLVM-Translator
++      GIT_REPOSITORY https://github.com/ThijsWithaar/SPIRV-LLVM-Translator
+       GIT_TAG origin/${LLVMSPIRV_BRANCH}
+       GIT_SHALLOW ON
+       GIT_REMOTE_UPDATE_STRATEGY CHECKOUT
+@@ -191,6 +191,7 @@ if(WITH_SSCP_COMPILER)
+       CMAKE_ARGS
+         -DCMAKE_C_COMPILER:PATH=${CMAKE_C_COMPILER}
+         -DCMAKE_CXX_COMPILER:PATH=${CMAKE_CXX_COMPILER}
++		-DBASE_LLVM_VERSION=22.0.0
+       CMAKE_CACHE_ARGS
+         -DLLVM_SPIRV_BUILD_EXTERNAL:BOOL=YES
+         -DLLVM_DIR:PATH=${LLVM_DIR}
+@@ -227,6 +228,8 @@ if(WITH_SSCP_COMPILER)
+   endif()
+ 
+   if(WITH_LLVM_TO_AMDGPU_AMDHSA)
++    find_package(hsa-runtime64 REQUIRED)
++	find_package(NUMA REQUIRED)
+     add_hipsycl_llvm_backend(
+       BACKEND amdgpu 
+       LIBRARY amdgpu/LLVMToAmdgpu.cpp 
+@@ -251,6 +254,7 @@ if(WITH_SSCP_COMPILER)
+       target_link_libraries(llvm-to-amdgpu PRIVATE ${HIPRTC_LIBRARY})
+       target_compile_definitions(llvm-to-amdgpu PRIVATE -DACPP_HIPRTC_LINK)
+     endif()
++	target_link_libraries(llvm-to-amdgpu-tool PRIVATE numa::numa hsa-runtime64::hsa-runtime64)
+ 
+   endif()
+ 
+diff --git a/src/compiler/llvm-to-backend/GlobalSizesFitInI32OptPass.cpp b/src/compiler/llvm-to-backend/GlobalSizesFitInI32OptPass.cpp
+index 2bd3afc7..4bae369f 100644
+--- a/src/compiler/llvm-to-backend/GlobalSizesFitInI32OptPass.cpp
++++ b/src/compiler/llvm-to-backend/GlobalSizesFitInI32OptPass.cpp
+@@ -14,12 +14,31 @@
+ 
+ #include <llvm/IR/Instructions.h>
+ #include <llvm/IR/Intrinsics.h>
++#include <llvm/IR/IntrinsicInst.h>
+ #include <llvm/IR/Constants.h>
+ #include <llvm/IR/Module.h>
+ 
+ namespace hipsycl {
+ namespace compiler {
+ 
++/// Get the next non-debug instruction, if one exists
++static inline llvm::Instruction* getNextNonDebugInstructionOrNull(llvm::Instruction *Z) {
++  for (llvm::Instruction *I = Z->getNextNode(); I; I = I->getNextNode())
++    if (!llvm::isa<llvm::DbgInfoIntrinsic>(I))
++      return I;
++  return nullptr;
++}
++/// Get the next non-debug instruction, erring if none exists
++static inline llvm::Instruction* getNextNonDebugInstruction(llvm::Instruction *Z) {
++  auto z = getNextNonDebugInstructionOrNull(Z);
++  if (z)
++    return z;
++  llvm::errs() << *Z->getParent() << "\n";
++  llvm::errs() << *Z << "\n";
++  llvm_unreachable("No valid subsequent non debug instruction");
++  exit(1);
++  return nullptr;
++}
+ 
+ // inserts llvm.assume calls to assert that x >= RangeMin && x < RangeMax.
+ bool insertRangeAssumptionForBuiltinCalls(llvm::Module &M, llvm::StringRef BuiltinName,
+@@ -40,7 +59,7 @@ bool insertRangeAssumptionForBuiltinCalls(llvm::Module &M, llvm::StringRef Built
+ 
+     for(auto* U : F->users()) {
+       if(auto* C = llvm::dyn_cast<llvm::CallInst>(U)) {
+-        auto NextInst = llvmutils::makeInsertionPoint(C->getNextNonDebugInstruction());
++        auto NextInst = llvmutils::makeInsertionPoint(getNextNonDebugInstruction(C));
+ 
+         auto *GreaterEqualMin = llvm::ICmpInst::Create(
+             llvm::Instruction::OtherOps::ICmp, llvm::ICmpInst::Predicate::ICMP_SGE, C,
+diff --git a/src/compiler/stdpar/SyncElision.cpp b/src/compiler/stdpar/SyncElision.cpp
+index a582a2fb..ab9f0b98 100644
+--- a/src/compiler/stdpar/SyncElision.cpp
++++ b/src/compiler/stdpar/SyncElision.cpp
+@@ -18,6 +18,7 @@
+ #include <llvm/Support/Casting.h>
+ #include <llvm/IR/Instructions.h>
+ #include <llvm/IR/Instruction.h>
++#include <llvm/IR/IntrinsicInst.h>
+ #include <llvm/ADT/SmallVector.h>
+ #include <llvm/IR/Constants.h>
+ #include <llvm/IR/InstrTypes.h>
+@@ -29,6 +30,25 @@ namespace compiler {
+ 
+ namespace {
+ 
++/// Get the next non-debug instruction, if one exists
++static inline llvm::Instruction* getNextNonDebugInstructionOrNull(llvm::Instruction *Z) {
++  for (llvm::Instruction *I = Z->getNextNode(); I; I = I->getNextNode())
++    if (!llvm::isa<llvm::DbgInfoIntrinsic>(I))
++      return I;
++  return nullptr;
++}
++/// Get the next non-debug instruction, erring if none exists
++static inline llvm::Instruction* getNextNonDebugInstruction(llvm::Instruction *Z) {
++  auto z = getNextNonDebugInstructionOrNull(Z);
++  if (z)
++    return z;
++  llvm::errs() << *Z->getParent() << "\n";
++  llvm::errs() << *Z << "\n";
++  llvm_unreachable("No valid subsequent non debug instruction");
++  exit(1);
++  return nullptr;
++}
++
+ template <class Handler>
+ bool descendInstructionUseTree(llvm::Instruction *I, Handler &&H,
+                                llvm::Instruction *Parent = nullptr) {
+@@ -165,7 +185,7 @@ bool functionDoesNotAccessMemory(llvm::Function* F){
+ // returns whether To is in the same BB as From, and succeeds it in the instruction list.
+ bool isSucceedingInBB(llvm::Instruction* From, llvm::Instruction* To) {
+   if(From->getParent() == To->getParent()) {
+-    for(auto* I = From; I != nullptr; I = I->getNextNonDebugInstruction()) {
++    for(auto* I = From; I != nullptr; I = getNextNonDebugInstruction(I)) {
+       if(I == To)
+         return true;
+     }
+@@ -288,7 +308,7 @@ void forEachReachableInstructionRequiringSync(
+         return;
+       }
+     }
+-    Current = Current->getNextNonDebugInstruction();
++    Current = getNextNonDebugInstruction(Current);
+   }
+   // We have reached the end of this BB - so we need to look
+   // at all its successors in the CFG
+@@ -403,7 +423,7 @@ llvm::PreservedAnalyses SyncElisionPass::run(llvm::Module &M, llvm::ModuleAnalys
+           StartPositions.push_back(&*(I->getSuccessor(i)->getFirstInsertionPt()));
+         }
+       } else {
+-        StartPositions.push_back(I->getNextNonDebugInstruction());
++        StartPositions.push_back(getNextNonDebugInstruction(I));
+       }
+       for(auto* Start : StartPositions) {
+ 
+diff --git a/src/runtime/CMakeLists.txt b/src/runtime/CMakeLists.txt
+index 9970a939..5578c4c6 100644
+--- a/src/runtime/CMakeLists.txt
++++ b/src/runtime/CMakeLists.txt
+@@ -353,16 +353,10 @@ if(WITH_CPU_BACKEND)
+     set(OMP_TARGET OpenMP::OpenMP_CXX)
+   endif()
+   
+-  find_path( NUMA_INCLUDE_DIR NAMES numa.h)
+-  find_library( NUMA_LIBRARY NAMES numa)
++  find_package(NUMA REQUIRED)
+ 
+-  if(NOT NUMA_INCLUDE_DIR OR NOT NUMA_LIBRARY)
+-    message(WARNING "Could not find NUMA")
+-  else()
+-    target_compile_definitions(rt-backend-omp PRIVATE -DLIB_NUMA_AVAILABLE)
+-    target_link_libraries(rt-backend-omp PRIVATE ${NUMA_LIBRARY})
+-    target_include_directories(rt-backend-omp PRIVATE ${NUMA_INCLUDE_DIR})
+-  endif()
++  target_compile_definitions(rt-backend-omp PRIVATE -DLIB_NUMA_AVAILABLE)
++  target_link_libraries(rt-backend-omp PRIVATE numa::numa)
+ 
+   target_include_directories(rt-backend-omp PRIVATE
+     ${HIPSYCL_SOURCE_DIR}/include 
+-- 
+2.47.3
+
