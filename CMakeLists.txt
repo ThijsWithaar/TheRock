@@ -448,6 +448,37 @@ if(THEROCK_BUILD_TESTING)
   add_subdirectory(examples)
 endif()
 
+string(REPLACE ";" "," GPU_TARGETS_COMMAS "${THEROCK_AMDGPU_TARGETS}")
+add_custom_command(
+  COMMENT "Building JAX"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/jax.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/jax
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/ml-libs/jax/build/build.py build --rocm_amdgpu_targets=${GPU_TARGETS_COMMAS} --wheels=jax,jaxlib,jax-rocm-plugin,jax-rocm-pjrt --rocm_path=${THEROCK_BINARY_DIR}/dist/rocm --rocm-device-lib-path=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/amdgcn/bitcode --local_xla_path=${CMAKE_SOURCE_DIR}/ml-libs/xla --rocm_version=${ROCM_MAJOR_VERSION}${ROCM_MINOR_VERSION} --bazel_options=--repo_env=ML_WHEEL_TYPE=release
+  COMMAND touch ${THEROCK_BINARY_DIR}/jax.state
+)
+
+add_custom_target(therock-jax ALL
+  DEPENDS ${THEROCK_BINARY_DIR}/jax.state
+)
+
+add_custom_command(
+  COMMENT "Building PyTorch"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/pytorch.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/pytorch
+  COMMAND python3 tools/amd_build/build_amd.py
+  COMMAND python3 setup.py bdist_wheel
+  COMMAND touch ${THEROCK_BINARY_DIR}/pytorch.state
+)
+
+add_custom_target(therock-torch ALL
+  DEPENDS ${THEROCK_BINARY_DIR}/pytorch.state
+)
+
+# ToDo: tensorflow, onnx, lama.cpp
+
+
 ################################################################################
 # Testing
 ################################################################################
@@ -488,7 +519,7 @@ set(APT_SUITE stable)
 
 add_custom_command(
   COMMENT "Build PPA packages from artifacts"
-  DEPENDS therock-artifacts ${THEROCK_BINARY_DIR}/jax.state
+  DEPENDS therock-artifacts therock-jax therock-torch
   OUTPUT ${THEROCK_BINARY_DIR}/ppa-debs.state
   COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
   # ToDo: Re-Do ACCP, to install it outside of /opt/rocm, with --install-prefix / --pkg-names acpp
