@@ -1,0 +1,42 @@
+From 9699e15dc9d38272c27e1ba720312bb7f6fde053 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 18 Oct 2026 18:21:43 +0200
+Subject: [PATCH] Bazel: Don-t-copy-symlinks-of-.so
+
+---
+ third_party/gpus/rocm/BUILD.tpl | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/third_party/gpus/rocm/BUILD.tpl b/third_party/gpus/rocm/BUILD.tpl
+index de7d5421af..751ead43c6 100644
+--- a/third_party/gpus/rocm/BUILD.tpl
++++ b/third_party/gpus/rocm/BUILD.tpl
+@@ -169,9 +169,9 @@ cc_library(
+     name = "rocm_hip",
+     srcs = glob(
+         [
+-            "%{rocm_root}/lib/libamdhip*.so*",
+-            "%{rocm_root}/lib/libhiprtc.so*",
+-            "%{rocm_root}/lib/libhiprtc-builtins.so*",
++            "%{rocm_root}/lib/libamdhip*.so",
++            "%{rocm_root}/lib/libhiprtc.so",
++            "%{rocm_root}/lib/libhiprtc-builtins.so",
+         ],
+         exclude = [
+             # exclude files like libamdhip64.so.7.1.25445-7484b05b13 -> misplaced
+@@ -200,9 +200,9 @@ cc_library(
+     name = "hip_runtime",
+     srcs = glob(
+         [
+-            "%{rocm_root}/lib/libamdhip*.so*",
+-            "%{rocm_root}/lib/libhiprtc.so*",
+-            "%{rocm_root}/lib/libhiprtc-builtins.so*",
++            "%{rocm_root}/lib/libamdhip*.so",
++            "%{rocm_root}/lib/libhiprtc.so",
++            "%{rocm_root}/lib/libhiprtc-builtins.so",
+         ],
+         exclude = [
+             # exclude files like libamdhip64.so.7.1.25445-7484b05b13 -> misplaced
+-- 
+2.47.3
+

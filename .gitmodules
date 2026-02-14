@@ -42,3 +42,23 @@
 	path = rocm-docs
 	url = https://github.com/ROCm/rocm-docs.git
 	branch = develop
+[submodule "jax"]
+	path = ml-libs/jax
+	url = https://github.com/jax-ml/jax.git
+	tag = jax-v0.9.0
+[submodule "pytorch"]
+	path = ml-libs/pytorch
+	url = https://github.com/pytorch/pytorch.git
+	branch = release/2.15
+[submodule "tensorflow"]
+	path = ml-libs/tensorflow
+	url = https://github.com/ROCm/tensorflow-upstream
+[submodule "xla"]
+	path = ml-libs/xla
+	url = https://github.com/openxla/xla
+[submodule "ml-libs/hipfire"]
+	path = ml-libs/hipfire
+	url = https://github.com/warpfront/hipfire.git
+[submodule "ml-libs/llama.cpp"]
+	path = ml-libs/llama.cpp
+	url = https://github.com/ggerganov/llama.cpp

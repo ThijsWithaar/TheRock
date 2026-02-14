@@ -1,0 +1,25 @@
+From c7fd7c3b0a8239517f398d3cd218ff4198b9ccf5 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 25 Oct 2026 20:56:53 +0100
+Subject: [PATCH] Use static amd_comgr
+
+---
+ third_party/gpus/rocm/BUILD.tpl | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/gpus/rocm/BUILD.tpl b/third_party/gpus/rocm/BUILD.tpl
+index de7d5421af..a74d7cc4d2 100644
+--- a/third_party/gpus/rocm/BUILD.tpl
++++ b/third_party/gpus/rocm/BUILD.tpl
+@@ -588,7 +588,7 @@ cc_library(
+ alias(
+     name = "amd_comgr",
+     actual = select_threshold(
+-        above_or_eq = ":amd_comgr_dynamic",
++        above_or_eq = ":amd_comgr_static",
+         below = ":amd_comgr_static",
+         threshold = 71000,
+         value = rocm_version_number(),
+-- 
+2.47.3
+

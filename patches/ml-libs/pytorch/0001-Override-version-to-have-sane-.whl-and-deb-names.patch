@@ -1,0 +1,35 @@
+From bdbb91a0be1366a0a53ed95c9f13aeef1bf918d8 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sat, 17 Oct 2026 14:02:21 +0200
+Subject: [PATCH] Override version, to have sane .whl and .deb names
+
+---
+ tools/generate_torch_version.py | 4 ++--
+ version.txt                     | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/tools/generate_torch_version.py b/tools/generate_torch_version.py
+index cf4e02931a2..175a19e0daf 100644
+--- a/tools/generate_torch_version.py
++++ b/tools/generate_torch_version.py
+@@ -90,8 +90,8 @@ def get_torch_version(sha: str | None = None) -> str:
+         if sdist_version is None and sha != UNKNOWN:
+             if sha is None:
+                 sha = get_sha(pytorch_root)
+-            version += "+git" + sha[:7]
+-            origin += " and git commit"
++            #version += "+git" + sha[:7]
++            #origin += " and git commit"
+     # Validate that the version is PEP 440 compliant
+     parsed_version = Version(version)
+     if sdist_version:
+diff --git a/version.txt b/version.txt
+index c7ad7015238..68e69e405ee 100644
+--- a/version.txt
++++ b/version.txt
+@@ -1 +1 @@
+-2.15.0a0
++2.15.0
+-- 
+2.47.3
+

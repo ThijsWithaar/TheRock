@@ -526,6 +526,62 @@ if(THEROCK_BUILD_TESTING)
   add_subdirectory(examples)
 endif()
 
+string(REPLACE ";" "," GPU_TARGETS_COMMAS "${THEROCK_AMDGPU_TARGETS}")
+add_custom_command(
+  COMMENT "Building JAX"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/jax.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/jax
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/ml-libs/jax/build/build.py build --rocm_amdgpu_targets=${GPU_TARGETS_COMMAS} --wheels=jax,jaxlib,jax-rocm-plugin,jax-rocm-pjrt --rocm_path=${THEROCK_BINARY_DIR}/dist/rocm --local_xla_path=${CMAKE_SOURCE_DIR}/ml-libs/xla --rocm_version=${ROCM_MAJOR_VERSION}${ROCM_MINOR_VERSION} --bazel_options=--repo_env=ML_WHEEL_TYPE=release
+  COMMAND touch ${THEROCK_BINARY_DIR}/jax.state
+)
+add_custom_target(therock-jax ALL DEPENDS ${THEROCK_BINARY_DIR}/jax.state)
+
+add_custom_command(
+  COMMENT "Building PyTorch"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/pytorch.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/pytorch
+  COMMAND git submodule update --init --recursive
+  COMMAND python3 tools/amd_build/build_amd.py
+  COMMAND CXX=/usr/bin/g++ ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm PYTORCH_ROCM_ARCH="${THEROCK_AMDGPU_TARGETS}" USE_ROCM=ON USE_VULKAN=ON USE_CUDA=0 python3 -m build --wheel --no-isolation
+  #--rocm-version=${ROCM_MAJOR_VERSION}${ROCM_MINOR_VERSION}
+  COMMAND touch ${THEROCK_BINARY_DIR}/pytorch.state
+)
+add_custom_target(therock-torch ALL DEPENDS ${THEROCK_BINARY_DIR}/pytorch.state)
+
+
+add_custom_command(
+  COMMENT "Building HIPfire"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/hipfire.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/hipfire
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cargo deb -p hipfire-cli
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cargo deb -p hipfire-daemon
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cargo deb -p hipfire-tui
+  COMMAND touch ${THEROCK_BINARY_DIR}/hipfire.state
+)
+add_custom_target(therock-hipfire ALL DEPENDS ${THEROCK_BINARY_DIR}/hipfire.state)
+
+
+add_custom_command(
+  COMMENT "Building Llama.C++"
+  DEPENDS therock-dist
+add_custom_command(
+  COMMENT "Building Llama.C++"
+  DEPENDS therock-dist therock-acpp
+  OUTPUT ${THEROCK_BINARY_DIR}/llama_cpp.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/llama.cpp
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cmake -B${THEROCK_BINARY_DIR}/llama.cpp.build -DCPACK_GENERATOR=DEB -DCMAKE_CXX_COMPILER=${THEROCK_BINARY_DIR}/dist/rocm/bin/hipcc
+  #COMMAND cmake --build ${THEROCK_BINARY_DIR}/llama.cpp.build --target package
+  #COMMAND touch ${THEROCK_BINARY_DIR}/llama_cpp.state
+)
+#add_custom_target(therock-llama-cpp ALL DEPENDS ${THEROCK_BINARY_DIR}/llama_cpp.state)
+
+
+# ToDo: tensorflow, onnx
+
+
 ################################################################################
 # Testing
 ################################################################################
@@ -571,13 +627,15 @@ set(APT_SUITE stable)
 
 add_custom_command(
   COMMENT "Build PPA packages from artifacts"
-  DEPENDS therock-artifacts ${THEROCK_BINARY_DIR}/jax.state
+  DEPENDS therock-artifacts therock-jax therock-torch therock-hipfire therock-llama-cpp
   OUTPUT ${THEROCK_BINARY_DIR}/ppa-debs.state
   COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
   # ToDo: Re-Do ACCP, to install it outside of /opt/rocm, with --install-prefix / --pkg-names acpp
   COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/jax/dist/*.whl
   COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/pytorch/dist/*.whl
-  COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
+  #COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
+  COMMAND cp ${MLLIB_DIR}/hipfire/target/debian/*.deb ${APT_DIR}/pool/main
+  COMMAND cp ${MLLIB_DIR}/llama.cpp/build/llama.cpp*.deb ${APT_DIR}/pool/main
   COMMAND touch ${THEROCK_BINARY_DIR}/ppa-debs.state
 )
 add_custom_target(therock-deb ALL DEPENDS ${THEROCK_BINARY_DIR}/ppa-debs.state)

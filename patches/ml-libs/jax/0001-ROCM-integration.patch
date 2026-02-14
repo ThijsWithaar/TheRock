@@ -1,0 +1,109 @@
+From 3ceae21ad54bf9c22f5b47bee3c894f81b52b48a Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Mon, 26 Oct 2026 21:18:27 +0100
+Subject: [PATCH] ROCM integration
+
+---
+ .bazelrc                                |  1 -
+ build/build.py                          | 10 ++++++++++
+ jaxlib/tools/build_gpu_kernels_wheel.py |  2 +-
+ jaxlib/tools/build_gpu_plugin_wheel.py  |  2 +-
+ jaxlib/tools/build_mosaic_wheel.py      |  2 +-
+ setup.py                                |  2 +-
+ 6 files changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/.bazelrc b/.bazelrc
+index 5e7b6af954..8ee8a5eec0 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -236,7 +236,6 @@ common:rocm_base --config=clang_local
+ common:rocm_base --crosstool_top=@local_config_rocm//crosstool:toolchain
+ common:rocm_base --define=using_rocm=true --define=using_rocm_hipcc=true
+ common:rocm_base --repo_env TF_NEED_ROCM=1
+-common:rocm_base --action_env TF_ROCM_AMDGPU_TARGETS="gfx900,gfx906,gfx908,gfx90a,gfx940,gfx941,gfx942,gfx1030,gfx1100,gfx1200,gfx1201"
+ 
+ # Build with hipcc for ROCm and clang for the host.
+ common:rocm --config=rocm_base
+diff --git a/build/build.py b/build/build.py
+index d13fdab1ca..07f4e4ff8a 100755
+--- a/build/build.py
++++ b/build/build.py
+@@ -268,6 +268,13 @@ def add_artifact_subcommand_arguments(parser: argparse.ArgumentParser):
+       help="Path to the ROCm toolkit.",
+   )
+ 
++  rocm_group.add_argument(
++      "--rocm-device-lib-path",
++      type=str,
++      default="",
++      help="Path to the ROCm device libraries.",
++  )
++
+   # Compile Options
+   compile_group = parser.add_argument_group('Compile Options')
+ 
+@@ -630,6 +637,9 @@ async def main():
+     if args.rocm_path:
+       logging.debug("ROCm toolkit path: %s", args.rocm_path)
+       wheel_build_command_base.append(f"--action_env=ROCM_PATH=\"{args.rocm_path}\"")
++    if args.rocm_device_lib_path:
++      logging.debug("ROCm device library path: %s", args.rocm_device_lib_path)
++      wheel_build_command_base.append(f"--action_env=HIP_DEVICE_LIB_PATH=\"{args.rocm_device_lib_path}\"")
+     if args.rocm_amdgpu_targets:
+       logging.debug("ROCm AMD GPU targets: %s", args.rocm_amdgpu_targets)
+       wheel_build_command_base.append(
+diff --git a/jaxlib/tools/build_gpu_kernels_wheel.py b/jaxlib/tools/build_gpu_kernels_wheel.py
+index 4ecb803ebe..20babb2f38 100644
+--- a/jaxlib/tools/build_gpu_kernels_wheel.py
++++ b/jaxlib/tools/build_gpu_kernels_wheel.py
+@@ -67,7 +67,7 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
++    required=False,
+     help="NVIDIA wheel versions data",
+ )
+ args = parser.parse_args()
+diff --git a/jaxlib/tools/build_gpu_plugin_wheel.py b/jaxlib/tools/build_gpu_plugin_wheel.py
+index 7ef6fdaaee..8256a89a91 100644
+--- a/jaxlib/tools/build_gpu_plugin_wheel.py
++++ b/jaxlib/tools/build_gpu_plugin_wheel.py
+@@ -73,7 +73,7 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
++    required=False,
+     help="NVIDIA wheel versions data",
+ )
+ args = parser.parse_args()
+diff --git a/jaxlib/tools/build_mosaic_wheel.py b/jaxlib/tools/build_mosaic_wheel.py
+index b5b1e08311..6df981c56f 100644
+--- a/jaxlib/tools/build_mosaic_wheel.py
++++ b/jaxlib/tools/build_mosaic_wheel.py
+@@ -62,7 +62,7 @@ parser.add_argument(
+ parser.add_argument(
+     "--nvidia_wheel_versions_data",
+     default=None,
+-    required=True,
++    required=False,
+     help="NVIDIA wheel versions data",
+ )
+ 
+diff --git a/setup.py b/setup.py
+index 8e65648466..2c98bdefe2 100644
+--- a/setup.py
++++ b/setup.py
+@@ -76,7 +76,7 @@ setup(
+         'cpu': [],
+ 
+         # Used only for CI builds that install JAX from github HEAD.
+-        'ci': [f'jaxlib=={_latest_jaxlib_version_on_pypi}'],
++        #'ci': [f'jaxlib=={_latest_jaxlib_version_on_pypi}'],
+ 
+         # Cloud TPU VM jaxlib can be installed via:
+         # $ pip install "jax[tpu]"
+-- 
+2.47.3
+

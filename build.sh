@@ -15,6 +15,7 @@ cmake --build --verbose=1 --preset linux-release-package --target therock-deb
 
 # The various stages of the build
 #cmake --build --preset linux-release-package --target therock-dist
+#cmake --build --preset linux-release-package --target therock-llama-cpp
 #cmake --build ${CBD} --target therock-torch
 #cmake --build ${CBD} --target therock-deb
 #cmake --build ${CBD} --target therock-ppa
@@ -22,7 +23,8 @@ cmake --build --verbose=1 --preset linux-release-package --target therock-deb
 
 CMAKE_SOURCE_DIR=/mnt/workspace
 THEROCK_BINARY_DIR=${CMAKE_SOURCE_DIR}/out/build/linux-release-package
-#THEROCK_AMDGPU_TARGETS="gfx1100;gfx1101;gfx1102;gfx1103"
+THEROCK_AMDGPU_TARGETS="gfx1100;gfx1103"
+GPU_TARGETS_COMMAS="gfx1100,gfx1103"
 
 ## therock-jax
 #cd ${CMAKE_SOURCE_DIR}/ml-libs/jax
