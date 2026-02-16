@@ -473,10 +473,8 @@ therock_cmake_subproject_declare(acpp
 	amd-llvm
 )
 therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
-therock_cmake_subproject_activate(acpp)
-therock_provide_artifact(acpp TARGET_NEUTRAL
-    DESCRIPTOR compiler/artifact-acpp.toml
-    COMPONENTS bin dev)
+#therock_cmake_subproject_activate(acpp)
+#therock_provide_artifact(acpp TARGET_NEUTRAL DESCRIPTOR compiler/artifact-acpp.toml COMPONENTS bin dev)
 
 # Note that rocprofiler-register is in base and is what higher level clients
 # depend on. The profiler itself is independent.
