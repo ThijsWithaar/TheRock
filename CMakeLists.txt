@@ -534,11 +534,9 @@ therock_cmake_subproject_declare(acpp
   RUNTIME_DEPS
 	amd-llvm
 )
-therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
-therock_cmake_subproject_activate(acpp)
-therock_provide_artifact(acpp TARGET_NEUTRAL
-    DESCRIPTOR compiler/artifact-acpp.toml
-    COMPONENTS bin dev)
+# therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
+# therock_cmake_subproject_activate(acpp)
+# therock_provide_artifact(acpp TARGET_NEUTRAL DESCRIPTOR compiler/artifact-acpp.toml COMPONENTS bin dev)
 
 # Note that rocprofiler-register is in base and is what higher level clients
 # depend on. The profiler itself is independent.
@@ -665,6 +663,6 @@ add_custom_command(
   COMMAND touch ${THEROCK_BINARY_DIR}/ppa-rsync.state
 )
 
-add_custom_target(therock-ppa
-  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release ${THEROCK_BINARY_DIR}/jax.state ${THEROCK_BINARY_DIR}/pytorch.state
+add_custom_target(therock-ppa ALL
+  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release ${THEROCK_BINARY_DIR}/ppa-debs.state therock-jax therock-torch
 )
