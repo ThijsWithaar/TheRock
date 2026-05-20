@@ -13,6 +13,7 @@
 			"generator": "Ninja",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"CMAKE_MAKE_PROGRAM" : "/usr/bin/ninja_memstop",
 				"CMAKE_C_COMPILER_LAUNCHER": "ccache",
 				"CMAKE_CXX_COMPILER_LAUNCHER": "ccache",
 				"BUILD_TESTING": "OFF",
@@ -25,6 +26,8 @@
 				"THEROCK_BUILD_LLVM_SPIRV_BACKEND": "ON",
 				"THEROCK_QUIET_INSTALL": "OFF",
 				"THEROCK_BUNDLE_SYSDEPS": "OFF",
+				"THEROCK_ENABLE_ROCPROFSYS": "OFF",
+				"THEROCK_FLAG_KPACK_SPLIT_ARTIFACTS": "OFF",
 				"THEROCK_AMDGPU_FAMILIES": "$penv{THEROCK_AMDGPU_FAMILIES}"
 			}
 		},

@@ -248,7 +248,7 @@ option(THEROCK_ENABLE_ML_LIBS "Enable building of ML libraries" "${THEROCK_ENABL
 option(THEROCK_ENABLE_PROFILER "Enable building the profiler libraries" "${THEROCK_ENABLE_ALL}")
 option(THEROCK_ENABLE_DC_TOOLS "Enable building of data center tools" "${THEROCK_ENABLE_ALL}")
 option(THEROCK_ENABLE_MEDIA_LIBS "Enable building of Media libraries" "${THEROCK_ENABLE_ALL}")
-option(THEROCK_ENABLE_IREE_LIBS "Enable building of IREE libraries" "${THEROCK_ENABLE_ALL}")
+option(THEROCK_ENABLE_IREE_LIBS "Enable building of IREE libraries" OFF)
 option(THEROCK_ENABLE_HOST_MATH "Build all bundled host math libraries by default" OFF)
 option(THEROCK_RESET_FEATURES "One-shot flag which forces all feature flags to their default state for this configuration run" OFF)
 
@@ -629,6 +629,7 @@ add_custom_command(
   #COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
   COMMAND touch ${THEROCK_BINARY_DIR}/ppa-debs.state
 )
+add_custom_target(therock-deb ALL DEPENDS ${THEROCK_BINARY_DIR}/ppa-debs.state)
 
 add_custom_command(
 	COMMENT "Creating GPG keys"
@@ -660,5 +661,4 @@ add_custom_command(
 )
 
 add_custom_target(therock-ppa ALL
-  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release ${THEROCK_BINARY_DIR}/ppa-debs.state therock-jax therock-torch
-)
+  DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release ${THEROCK_BINARY_DIR}/ppa-debs.state therock-deb)

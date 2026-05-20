@@ -1,4 +1,4 @@
-FROM debian:trixie-20251103 AS rocm_trixie_vscode
+FROM debian:trixie-20261005 AS rocm_trixie_vscode
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NONINTERACTIVE_SEEN=true
@@ -6,12 +6,12 @@ ENV DEBCONF_NONINTERACTIVE_SEEN=true
 RUN sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/debian.sources && \
 	apt update -q && apt install --no-upgrade -y -qq apt-utils ca-certificates sed gnupg locales sudo unzip wget && \
 	sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && dpkg-reconfigure locales && \
-	wget -O - https://bazel.build/bazel-release.pub.gpg | gpg --dearmor -o /etc/apt/keyrings/bazel-release.gpg && \
+	wget -O - https://releases.bazel.build/bazel-release.pub.gpg  | gpg --dearmor -o /etc/apt/keyrings/bazel-release.gpg && \
 	echo "deb [arch=amd64, signed-by=/etc/apt/keyrings/bazel-release.gpg] http://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list > /dev/null
 #	wget https://storage.googleapis.com/git-repo-downloads/repo -O /usr/bin/repo && \
 #	chmod a+x /usr/bin/repo
 
-ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev"
+ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev python3-zstandard"
 ARG PKG_JAX="bazel-7.4.1 binutils-gold libxml2-dev patchelf clang-18 lld-18"
 ARG PKG_PYTORCH="python3-build python3-six libvulkan-dev glslc" 
 # pytorch requires a newer python3-scikit-build-core, use pip3 for that
@@ -46,6 +46,15 @@ RUN cmake -S/tmp/lapack -B/tmp/lapack.build \
 	-DBUILD_TESTING=OFF -DCBLAS=ON -DLAPACKE=OFF && \
 	cmake --build /tmp/lapack.build && \
 	cmake --build /tmp/lapack.build --target install
+
+# Stop spawning processes until memory load is reasonable. install /usr/local/lib/memstop.so
+COPY <<"EOT" /usr/bin/ninja_memstop
+#!/bin/sh
+MEMSTOP_PERCENT=20 LD_PRELOAD=/usr/local/lib/memstop.so /usr/bin/ninja "$@"
+EOT
+RUN cd /tmp && git clone https://github.com/surban/memstop.git && \
+	cd /tmp/memstop && make install && \
+	chmod +x /usr/bin/ninja_memstop
 
 # rocrdecode looks in /opt/amdgpu for the include, instead of (also) in the system folder
 RUN mkdir -p /opt/amdgpu && sudo ln -s /usr/include /opt/amdgpu/include
