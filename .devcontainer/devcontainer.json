@@ -30,7 +30,7 @@
 		"HIP_CLANG_LAUNCHER": "ccache",
 		"CCACHE_CONFIGPATH": "/mnt/workspace/.ccache/ccache.conf",
 		"CCACHE_ENABLED": "true",
-		"CMAKE_BUILD_PARALLEL_LEVEL": "12",
+		"CMAKE_BUILD_PARALLEL_LEVEL": "10",
 		"JOB_DESIGNATOR": "",
 		"BUILD_ID": "1",
 		"THEROCK_AMDGPU_FAMILIES": "gfx110X-all"

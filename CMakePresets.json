@@ -13,6 +13,7 @@
 			"generator": "Ninja",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"CMAKE_MAKE_PROGRAM" : "/usr/bin/ninja_memstop",
 				"CMAKE_C_COMPILER_LAUNCHER": "ccache",
 				"CMAKE_CXX_COMPILER_LAUNCHER": "ccache",
 				"BUILD_TESTING": "OFF",

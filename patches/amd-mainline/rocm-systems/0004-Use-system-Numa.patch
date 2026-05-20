@@ -1,20 +1,20 @@
-From 1d438dccd853a61732e1dd483142dd8b1de47615 Mon Sep 17 00:00:00 2001
+From 30923c31cf0e455a7c834f790f93ac32670e7886 Mon Sep 17 00:00:00 2001
 From: Thijs Withaar <thijs.withaar@gmail.com>
-Date: Sat, 14 Feb 2026 12:20:37 +0100
+Date: Wed, 20 May 2026 20:13:40 +0200
 Subject: [PATCH] Use system Numa
 
 ---
- .../catch/perftests/memory/CMakeLists.txt         |  2 +-
- projects/rocr-runtime/CMakeLists.txt              |  3 +++
- projects/rocr-runtime/libhsakmt/CMakeLists.txt    | 15 ++++-----------
- .../runtime/hsa-runtime/CMakeLists.txt            |  3 ++-
- 4 files changed, 10 insertions(+), 13 deletions(-)
+ .../hip-tests/catch/perftests/memory/CMakeLists.txt |  2 +-
+ projects/rocr-runtime/CMakeLists.txt                |  3 +++
+ projects/rocr-runtime/libhsakmt/CMakeLists.txt      | 13 +++----------
+ .../rocr-runtime/runtime/hsa-runtime/CMakeLists.txt |  3 ++-
+ 4 files changed, 9 insertions(+), 12 deletions(-)
 
 diff --git a/projects/hip-tests/catch/perftests/memory/CMakeLists.txt b/projects/hip-tests/catch/perftests/memory/CMakeLists.txt
-index 8773766deb..9bd705d14b 100644
+index d4f092ba79..118f9d8f82 100644
 --- a/projects/hip-tests/catch/perftests/memory/CMakeLists.txt
 +++ b/projects/hip-tests/catch/perftests/memory/CMakeLists.txt
-@@ -58,7 +58,7 @@ if(HIP_PLATFORM MATCHES "amd")
+@@ -42,7 +42,7 @@ if(HIP_PLATFORM MATCHES "amd")
        hip_add_exe_to_target(NAME perfMemoryTest
                        TEST_SRC ${TEST_SRC}
                        TEST_TARGET_NAME perf_test
@@ -24,7 +24,7 @@ index 8773766deb..9bd705d14b 100644
        hip_add_exe_to_target(NAME perfMemoryTest
                        TEST_SRC ${TEST_SRC}
 diff --git a/projects/rocr-runtime/CMakeLists.txt b/projects/rocr-runtime/CMakeLists.txt
-index 44850dd7cf..aed15f53ff 100644
+index 2837ef004a..1bf58f51a5 100644
 --- a/projects/rocr-runtime/CMakeLists.txt
 +++ b/projects/rocr-runtime/CMakeLists.txt
 @@ -89,6 +89,9 @@ include ( GNUInstallDirs )
@@ -35,51 +35,48 @@ index 44850dd7cf..aed15f53ff 100644
 +
 +
  ## Get version strings
- get_version("1.18.0")
+ get_version("1.21.0")
  if (${ROCM_PATCH_VERSION})
 diff --git a/projects/rocr-runtime/libhsakmt/CMakeLists.txt b/projects/rocr-runtime/libhsakmt/CMakeLists.txt
-index 25b3af4af8..c860943e3f 100644
+index 55bd945fd2..e4f7349f04 100644
 --- a/projects/rocr-runtime/libhsakmt/CMakeLists.txt
 +++ b/projects/rocr-runtime/libhsakmt/CMakeLists.txt
-@@ -159,16 +159,8 @@ find_package(PkgConfig)
- get_os_info()
+@@ -234,14 +234,7 @@ else()
  
- find_package(PkgConfig)
--# Check for libraries required for building
--find_library(LIBC NAMES c REQUIRED)
--find_package(NUMA)
--if(NUMA_FOUND)
--  set(NUMA "${NUMA_LIBRARIES}")
--else()
--  find_library(NUMA NAMES numa REQUIRED)
--endif()
-+find_package(NUMA CONFIG REQUIRED)
- message(STATUS "LIBC: " ${LIBC})
--message(STATUS "NUMA: " ${NUMA})
+   find_package(PkgConfig)
+   if (UNIX)
+-    # Check for libraries required for building
+-    find_library(LIBC NAMES c REQUIRED)
+-    find_package(NUMA)
+-    if(NUMA_FOUND)
+-      set(NUMA "${NUMA_LIBRARIES}")
+-    else()
+-      find_library(NUMA NAMES numa REQUIRED)
+-    endif()
++    find_package(NUMA CONFIG REQUIRED)
+     message(STATUS "LIBC: " ${LIBC})
+     message(STATUS "NUMA: " ${NUMA})
  
- ## If environment variable DRM_DIR is set, the script
- ## will pick up the corresponding libraries from that path.
-@@ -184,7 +176,8 @@ include_directories(${DRM_AMDGPU_INCLUDE_DIRS})
- include_directories(${DRM_INCLUDE_DIRS})
+@@ -259,7 +252,7 @@ else()
+     include_directories(${DRM_INCLUDE_DIRS})
  
- target_link_libraries ( ${HSAKMT_TARGET}
--  PRIVATE ${DRM_LDFLAGS} ${DRM_AMDGPU_LDFLAGS} pthread rt ${LIBC} ${NUMA} ${CMAKE_DL_LIBS}
-+  PRIVATE ${DRM_LDFLAGS} ${DRM_AMDGPU_LDFLAGS} pthread rt ${LIBC} ${CMAKE_DL_LIBS}
-+  PRIVATE numa::numa
- )
+     target_link_libraries ( ${HSAKMT_TARGET}
+-      PRIVATE ${DRM_LDFLAGS} ${DRM_AMDGPU_LDFLAGS} pthread rt ${LIBC} ${NUMA} ${CMAKE_DL_LIBS}
++      PRIVATE ${DRM_LDFLAGS} ${DRM_AMDGPU_LDFLAGS} pthread rt ${LIBC} numa::numa ${CMAKE_DL_LIBS}
+     )
  
- target_compile_options(${HSAKMT_TARGET} PRIVATE ${DRM_CFLAGS} ${HSAKMT_C_FLAGS})
-@@ -297,7 +290,7 @@ if ( NOT BUILD_SHARED_LIBS)
-   endif()
-   # Link drm_amdgpu and drm library statically
-   target_link_libraries ( ${HSAKMT_STATIC_DRM_TARGET}
--    PRIVATE pthread rt c numa ${CMAKE_DL_LIBS}
-+    PRIVATE pthread rt c numa::numa ${CMAKE_DL_LIBS}
-     INTERFACE -Wl,-Bstatic ${AMDGPU_STATIC_LIB_PATHS} ${DRM_AMDGPU_LDFLAGS} ${DRM_LDFLAGS} -Wl,-Bdynamic
-   )
-   target_compile_options(${HSAKMT_STATIC_DRM_TARGET} PRIVATE ${DRM_CFLAGS} ${HSAKMT_C_FLAGS})
+     target_compile_options(${HSAKMT_TARGET} PRIVATE ${DRM_CFLAGS} ${HSAKMT_C_FLAGS})
+@@ -415,7 +408,7 @@ else()
+       endif()
+       # Link drm_amdgpu and drm library statically
+       target_link_libraries ( ${HSAKMT_STATIC_DRM_TARGET}
+-        PRIVATE pthread rt c numa ${CMAKE_DL_LIBS}
++        PRIVATE pthread rt c numa::numa ${CMAKE_DL_LIBS}
+         INTERFACE -Wl,-Bstatic ${AMDGPU_STATIC_LIB_PATHS} ${DRM_AMDGPU_LDFLAGS} ${DRM_LDFLAGS} -Wl,-Bdynamic
+       )
+     else()
 diff --git a/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt b/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt
-index 6f0d074c43..868a950226 100644
+index bae0f4b3f1..e5fd6a3e7c 100644
 --- a/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt
 +++ b/projects/rocr-runtime/runtime/hsa-runtime/CMakeLists.txt
 @@ -92,6 +92,7 @@ find_package(LibElf CONFIG)
@@ -88,9 +85,9 @@ index 6f0d074c43..868a950226 100644
  endif()
 +find_package(NUMA REQUIRED)
  
- ## Create the rocr target.
- add_library( ${CORE_RUNTIME_TARGET} "" )
-@@ -335,7 +336,7 @@ if(${IMAGE_SUPPORT})
+ ## Find AMD CUID library.
+ set(AMDCUID_ROOT "/opt/amdcuid" CACHE PATH "Path to AMDCUID installation")
+@@ -374,7 +375,7 @@ if(${IMAGE_SUPPORT})
  endif()
  
  if (UNIX)

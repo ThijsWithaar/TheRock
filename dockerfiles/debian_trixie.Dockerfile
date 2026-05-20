@@ -1,4 +1,4 @@
-FROM debian:trixie-20251103 AS rocm_trixie_vscode
+FROM debian:trixie-20260518 AS rocm_trixie_vscode
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NONINTERACTIVE_SEEN=true
@@ -11,7 +11,7 @@ RUN sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/de
 #	wget https://storage.googleapis.com/git-repo-downloads/repo -O /usr/bin/repo && \
 #	chmod a+x /usr/bin/repo
 
-ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev"
+ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev python3-zstandard"
 ARG PKG_JAX="bazel-7.4.1 binutils-gold libxml2-dev patchelf clang-18 lld-18"
 ARG PKG_ACPP="llvm-18 llvm-18-dev"
 
@@ -32,7 +32,7 @@ RUN apt update && apt install --no-upgrade --no-install-recommends -y -qq \
 	ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev x265 fdkaac \
 	doxygen texinfo texlive bison flex libtool gettext ${PKG_SYSDEPS} ${PKG_JAX} ${PKG_ACPP}
 
-RUN pip3 install --break-system-packages CppHeaderParser
+RUN pip3 install --break-system-packages CppHeaderParser lit
 
 # rocSOLVER and others need libcblas.a for their tests: https://github.com/ROCm/rocSOLVER/blob/develop/install.sh#L178
 ARG lapack_version=3.9.1
@@ -44,6 +44,15 @@ RUN cmake -S/tmp/lapack -B/tmp/lapack.build \
 	-DBUILD_TESTING=OFF -DCBLAS=ON -DLAPACKE=OFF && \
 	cmake --build /tmp/lapack.build && \
 	cmake --build /tmp/lapack.build --target install
+
+# Stop spawning processes until memory load is reasonable. install /usr/local/lib/memstop.so
+COPY <<"EOT" /usr/bin/ninja_memstop
+#!/bin/sh
+MEMSTOP_PERCENT=25 LD_PRELOAD=/usr/local/lib/memstop.so /usr/bin/ninja "$@"
+EOT
+RUN cd /tmp && git clone https://github.com/surban/memstop.git && \
+	cd /tmp/memstop && make install && \
+	chmod +x /usr/bin/ninja_memstop
 
 # rocrdecode looks in /opt/amdgpu for the include, instead of (also) in the system folder
 RUN mkdir -p /opt/amdgpu && sudo ln -s /usr/include /opt/amdgpu/include
