@@ -62,3 +62,6 @@
 [submodule "ml-libs/llama.cpp"]
 	path = ml-libs/llama.cpp
 	url = https://github.com/ggerganov/llama.cpp
+[submodule "compiler/AdaptiveCpp"]
+	path = compiler/AdaptiveCpp
+	url = https://github.com/AdaptiveCpp/AdaptiveCpp.git

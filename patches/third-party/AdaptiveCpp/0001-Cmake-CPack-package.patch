@@ -1,0 +1,72 @@
+From e41144f65dc57676d02fef524216f04fc90bb2a1 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Fri, 6 Nov 2026 20:36:45 +0100
+Subject: [PATCH] Cmake: CPack package
+
+---
+ CMakeLists.txt             |  7 +++++++
+ src/runtime/CMakeLists.txt | 15 +++++----------
+ 2 files changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0f33bfd2..1ff86efe 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -987,6 +987,12 @@ mark_as_advanced(
+ 
+ # New module
+ 
++if(UNIX)
++  file(WRITE ${ACPP_BINARY_ROOT}/30-adaptivecpp.conf "${ACPP_INSTALL_PREFIX}/lib/hipSYCL\n")
++  install(FILES ${ACPP_BINARY_ROOT}/30-adaptivecpp.conf DESTINATION etc/ld.so.conf.d)
++endif()
++set(CPACK_PACKAGE_CONTACT aksel.alpay@uni-heidelberg.de)
++set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+ 
+ set(ADAPTIVECPP_INSTALL_CMAKE_DIR
+   "lib/cmake/AdaptiveCpp" CACHE PATH "Install path for CMake config files")
+@@ -1033,3 +1039,4 @@ mark_as_advanced(
+   ADAPTIVECPP_INSTALL_CMAKE_DIR
+ )
+ 
++include(CPack)
+diff --git a/src/runtime/CMakeLists.txt b/src/runtime/CMakeLists.txt
+index a4d405b4..7c7f9d1e 100644
+--- a/src/runtime/CMakeLists.txt
++++ b/src/runtime/CMakeLists.txt
+@@ -243,19 +243,14 @@ if(WITH_OPENCL_BACKEND)
+     GIT_TAG 265df85aec478d14a5c5880d7bb92d7dd52714ef
+   )
+   
+-  FetchContent_MakeAvailable(ocl-headers)
+-  
+-  add_library(ocl-headers INTERFACE)
+-  target_include_directories(ocl-headers INTERFACE ${ocl-headers_SOURCE_DIR})
+-  
+   FetchContent_Declare(ocl-cxx-headers
+     GIT_REPOSITORY https://github.com/KhronosGroup/OpenCL-CLHPP
+     GIT_TAG 67d100e70612341707725b6648ccca4c10b0dc31
+   )
+-  FetchContent_MakeAvailable(ocl-cxx-headers)
+-  
+-  add_library(ocl-cxx-headers INTERFACE)
+-  target_include_directories(ocl-cxx-headers INTERFACE ${ocl-cxx-headers_SOURCE_DIR}/include)
++
++  list(APPEND CMAKE_PREFIX_PATH /usr/share/cmake)
++  find_package(OpenCLHeaders REQUIRED)
++  find_package(OpenCLHeadersCpp REQUIRED)
+ 
+   add_library(rt-backend-ocl SHARED
+     ocl/ocl_backend.cpp
+@@ -267,7 +262,7 @@ if(WITH_OPENCL_BACKEND)
+     ocl/ocl_queue.cpp)
+ 
+   target_include_directories(rt-backend-ocl PRIVATE ${HIPSYCL_SOURCE_DIR}/include)
+-  target_link_libraries(rt-backend-ocl PRIVATE acpp-rt ${OpenCL_LIBRARIES} ocl-headers ocl-cxx-headers)
++  target_link_libraries(rt-backend-ocl PRIVATE acpp-rt ${OpenCL_LIBRARIES} OpenCL::Headers OpenCL::HeadersCpp)
+ 
+   target_compile_options(rt-backend-ocl PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
+   target_link_libraries(rt-backend-ocl PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
+-- 
+2.47.3
+

@@ -51,3 +51,10 @@ python3 build/build.py build --wheels=jax,jaxlib,jax-rocm-plugin,jax-rocm-pjrt -
 #    cmake -B${THEROCK_BINARY_DIR}/acpp.build -DCMAKE_INSTALL_PREFIX=/opt/acpp -DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm -DCPACK_GENERATOR=DEB -DGPU_TARGETS=${GPU_TARGETS_COMMAS} -DCMAKE_CXX_COMPILER=clang++-18 -DWITH_OPENCL_BACKEND=OFF
 #fi
 #cmake --build ${THEROCK_BINARY_DIR}/acpp.build --target package
+
+## Adaptive C++
+cd ${CMAKE_SOURCE_DIR}/compiler/AdaptiveCpp
+if [ ! -d ${THEROCK_BINARY_DIR}/acpp.build ]; then
+    cmake -B${THEROCK_BINARY_DIR}/acpp.build -DCMAKE_INSTALL_PREFIX=/opt/acpp -DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm -DCPACK_GENERATOR=DEB -DGPU_TARGETS=${GPU_TARGETS_COMMAS} -DCMAKE_CXX_COMPILER=clang++-18 -DWITH_OPENCL_BACKEND=OFF
+fi
+#cmake --build ${THEROCK_BINARY_DIR}/acpp.build --target package
