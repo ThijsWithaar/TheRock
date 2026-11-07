@@ -1,0 +1,528 @@
+From 2ed568a0db4ae0e1f2d1c4d94eade54f1262f399 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sat, 16 May 2026 20:50:14 +0200
+Subject: [PATCH] build fixes: CPack, debian, TheRock
+
+---
+ .devops/rocm.Dockerfile         |   2 +-
+ .gitignore                      |   1 +
+ CMakeLists.txt                  |  27 +++++-
+ CMakePresets.json               | 152 ++++++++++++--------------------
+ README.md                       |   7 ++
+ bench.sh                        |   8 ++
+ deb/llama-vscode.service        |  18 ++++
+ deb/llama-vscode.socket         |  11 +++
+ deb/mcp.service                 |  18 ++++
+ deb/postinst                    |  11 +++
+ deb/prerm                       |   7 ++
+ examples/batched/CMakeLists.txt |   1 -
+ gemma.sh                        |  17 ++++
+ mcp_config.json                 |  49 ++++++++++
+ models.ini                      |  32 +++++++
+ 15 files changed, 263 insertions(+), 98 deletions(-)
+ create mode 100755 bench.sh
+ create mode 100644 deb/llama-vscode.service
+ create mode 100644 deb/llama-vscode.socket
+ create mode 100644 deb/mcp.service
+ create mode 100755 deb/postinst
+ create mode 100755 deb/prerm
+ create mode 100755 gemma.sh
+ create mode 100644 mcp_config.json
+ create mode 100644 models.ini
+
+diff --git a/.devops/rocm.Dockerfile b/.devops/rocm.Dockerfile
+index 310f4f6d9..1f02e9343 100644
+--- a/.devops/rocm.Dockerfile
++++ b/.devops/rocm.Dockerfile
+@@ -34,7 +34,7 @@ FROM ${BASE_ROCM_DEV_CONTAINER} AS build
+ # check https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/compatibility/compatibilityrad/native_linux/native_linux_compatibility.html
+ # check https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/compatibility/compatibilityryz/native_linux/native_linux_compatibility.html
+ 
+-ARG ROCM_DOCKER_ARCH='gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1151;gfx1150;gfx1200;gfx1201'
++ARG ROCM_DOCKER_ARCH='gfx942,gfx1100,gfx1101,gfx1103'
+ 
+ # Set ROCm architectures
+ ENV AMDGPU_TARGETS=${ROCM_DOCKER_ARCH}
+diff --git a/.gitignore b/.gitignore
+index 9b589615a..1c6659247 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -85,6 +85,7 @@
+ /tools/server/*.js.hpp
+ /tools/server/*.mjs.hpp
+ /tools/server/*.gz.hpp
++/tools/server/webui/node_modules/*
+ !/build_64.sh
+ !/examples/*.bat
+ !/examples/*/*.kts
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0cf2dc815..300bec1b5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -36,6 +36,14 @@ message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+ 
+ # Add path to modules
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
++set(ROCM_CORE_DIR "/opt/rocm/core")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/AMDDeviceLibs")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/amd_comgr")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/hsa-runtime64")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/hipblas-common")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/hipblas")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/hip")
++list(APPEND CMAKE_PREFIX_PATH "${ROCM_CORE_DIR}/lib/cmake/rocblas")
+ 
+ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+@@ -139,7 +147,7 @@ option(LLAMA_USE_PREBUILT_UI "llama: use prebuilt UI from HF Bucket when availab
+ option(LLAMA_CONNECT         "llama: include the llama-connect tool (downloads a prebuilt binary)"               OFF)
+ 
+ option(LLAMA_TOOLS_INSTALL "llama: install tools" ${LLAMA_TOOLS_INSTALL_DEFAULT})
+-option(LLAMA_TESTS_INSTALL "llama: install tests" ON)
++option(LLAMA_TESTS_INSTALL "llama: install tests" OFF)
+ 
+ # 3rd party libs
+ option(LLAMA_OPENSSL    "llama: use openssl to support HTTPS" ON)
+@@ -243,7 +251,6 @@ endif()
+ 
+ if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_TESTS AND NOT CMAKE_JS_VERSION)
+     include(CTest)
+-    add_subdirectory(tests)
+ endif()
+ 
+ if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_EXAMPLES)
+@@ -317,3 +324,19 @@ configure_file(cmake/llama.pc.in
+ 
+ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/llama.pc"
+         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
++
++if(UNIX)
++    set(SYSTEMD_UNIT_DIR "/etc/systemd/system") # Directory with systemd unit files
++    install(FILES deb/llama-vscode.service DESTINATION ${SYSTEMD_UNIT_DIR} COMPONENT server)
++    install(FILES models.ini mcp_config.json DESTINATION /usr/share/llm COMPONENT server)
++
++    file(GLOB CONTROL_EXTRA CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/deb/p*)
++    set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA ${CONTROL_EXTRA})
++    set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
++	# Build-dependencies: amdrocm-llvm; amdrocm-runtime-dev; amdrocm-core-dev-gfx110x
++	set(CPACK_DEBIAN_PACKAGE_DEPENDS "hip-runtime-amd")
++	#set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
++endif()
++
++set(CPACK_PACKAGE_CONTACT ggerganov@gmail.com)
++include(CPack)
+diff --git a/CMakePresets.json b/CMakePresets.json
+index b5afeb3c0..3304380ff 100644
+--- a/CMakePresets.json
++++ b/CMakePresets.json
+@@ -1,95 +1,59 @@
+ {
+-  "version": 4,
+-  "configurePresets": [
+-    {
+-        "name":  "base",
+-        "hidden": true,
+-        "generator":   "Ninja",
+-        "binaryDir":   "${sourceDir}/build-${presetName}",
+-        "cacheVariables": {
+-            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+-            "CMAKE_INSTALL_RPATH": "$ORIGIN;$ORIGIN/.."
+-        }
+-    },
+-    {
+-        "name": "sycl-base",
+-        "hidden": true,
+-        "generator": "Ninja",
+-        "binaryDir": "${sourceDir}/build-${presetName}",
+-        "cacheVariables": {
+-            "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+-            "CMAKE_CXX_COMPILER": "icx",
+-            "CMAKE_C_COMPILER": "cl",
+-            "GGML_SYCL": "ON",
+-            "CMAKE_INSTALL_RPATH": "$ORIGIN;$ORIGIN/.."
+-        }
+-    },
+-    { "name": "debug",    "hidden": true, "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
+-    { "name": "release",  "hidden": true, "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } },
+-    { "name": "reldbg",   "hidden": true, "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" } },
+-    { "name": "static",   "hidden": true, "cacheVariables": { "GGML_STATIC":      "ON" } },
+-    { "name": "sycl_f16", "hidden": true, "cacheVariables": { "GGML_SYCL_F16":    "ON" } },
+-    { "name": "vulkan",   "hidden": true, "cacheVariables": { "GGML_VULKAN":      "ON" } },
+-
+-    {
+-        "name": "x64-windows-llvm", "hidden": true,
+-        "cacheVariables": {
+-            "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/x64-windows-llvm.cmake"
+-        }
+-    },
+-
+-    {
+-        "name": "arm64-windows-llvm", "hidden": true,
+-        "architecture": { "value": "arm64",    "strategy": "external" },
+-        "toolset":      { "value": "host=x64", "strategy": "external" },
+-        "cacheVariables": {
+-            "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm64-windows-llvm.cmake"
+-        }
+-    },
+-
+-    {
+-        "name": "arm64-apple-clang", "hidden": true,
+-        "architecture": { "value": "arm64",    "strategy": "external" },
+-        "toolset":      { "value": "host=x64", "strategy": "external" },
+-        "cacheVariables": {
+-            "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm64-apple-clang.cmake"
+-        }
+-    },
+-    {
+-        "name": "x64-linux-gcc", "hidden": true,
+-        "cacheVariables": {
+-            "CMAKE_C_COMPILER": "gcc",
+-            "CMAKE_CXX_COMPILER": "g++"
+-        }
+-    },
+-    { "name": "x64-linux-gcc-debug", "inherits": [ "base", "x64-linux-gcc", "debug" ] },
+-    { "name": "x64-linux-gcc-release", "inherits": [ "base", "x64-linux-gcc", "release" ] },
+-    { "name": "x64-linux-gcc-reldbg", "inherits": [ "base", "x64-linux-gcc", "reldbg" ] },
+-    { "name": "x64-linux-gcc+static-release", "inherits": [ "base", "x64-linux-gcc", "release", "static" ] },
+-
+-    { "name": "arm64-windows-llvm-debug", "inherits": [ "base", "arm64-windows-llvm", "debug" ] },
+-    { "name": "arm64-windows-llvm-release", "inherits": [ "base", "arm64-windows-llvm", "reldbg" ] },
+-    { "name": "arm64-windows-llvm+static-release", "inherits": [ "base", "arm64-windows-llvm", "reldbg", "static" ] },
+-
+-    { "name": "arm64-apple-clang-debug", "inherits": [ "base", "arm64-apple-clang", "debug" ] },
+-    { "name": "arm64-apple-clang-release", "inherits": [ "base", "arm64-apple-clang", "reldbg" ] },
+-    { "name": "arm64-apple-clang+static-release", "inherits": [ "base", "arm64-apple-clang",  "reldbg", "static" ] },
+-
+-    { "name": "x64-windows-llvm-debug", "inherits": [ "base", "x64-windows-llvm", "debug" ] },
+-    { "name": "x64-windows-llvm-release", "inherits": [ "base", "x64-windows-llvm", "release" ] },
+-    { "name": "x64-windows-llvm-reldbg", "inherits": [ "base", "x64-windows-llvm", "reldbg" ] },
+-    { "name": "x64-windows-llvm+static-release", "inherits": [ "base", "x64-windows-llvm", "reldbg", "static" ] },
+-
+-    { "name": "x64-windows-msvc-debug", "inherits": [ "base", "debug" ] },
+-    { "name": "x64-windows-msvc-release", "inherits": [ "base", "reldbg" ] },
+-    { "name": "x64-windows-msvc+static-release", "inherits": [ "base", "reldbg", "static" ] },
+-
+-    { "name": "x64-windows-sycl-debug", "inherits": [ "sycl-base", "debug" ] },
+-    { "name": "x64-windows-sycl-debug-f16", "inherits": [ "sycl-base", "debug", "sycl_f16" ] },
+-    { "name": "x64-windows-sycl-release", "inherits": [ "sycl-base", "release" ] },
+-    { "name": "x64-windows-sycl-release-f16", "inherits": [ "sycl-base", "release", "sycl_f16" ] },
+-
+-    { "name": "x64-windows-vulkan-debug", "inherits": [ "base", "vulkan", "debug" ] },
+-    { "name": "x64-windows-vulkan-release", "inherits": [ "base", "vulkan", "release" ] }
+-  ]
+-}
++	"version": 4,
++	"configurePresets": [
++		{
++			"name": "linux-base",
++			"hidden": true,
++			"generator": "Ninja",
++			"cacheVariables": {
++				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
++				"CMAKE_BUILD_WITH_INSTALL_RPATH": "ON",
++				"CPACK_GENERATOR": "DEB",
++				"CMAKE_C_COMPILER": "/opt/rocm/core/lib/llvm/bin/clang",
++				"CMAKE_CXX_COMPILER": "/opt/rocm/core/lib/llvm/bin/clang++",
++				"GGML_NATIVE": "ON",
++				"GGML_HIP": "ON",
++				"GGML_VULKAN": "ON",
++				"AMDGPU_TARGETS": "gfx1100,gfx1103",
++				"GPU_TARGETS": "gfx1100,gfx1103",
++				"LLAMA_BUILD_EXAMPLES": "OFF",
++				"LLAMA_BUILD_TESTS": "OFF"
++			},
++			"condition": {
++				"type": "equals",
++				"lhs": "${hostSystemName}",
++				"rhs": "Linux"
++			}
++		},
++		{
++			"name": "debug",
++			"inherits": "linux-base",
++			"displayName": "Debug (Ninja)",
++			"binaryDir": "${sourceDir}/build.debug",
++			"cacheVariables": {
++				"CMAKE_BUILD_TYPE": "Debug"
++			}
++		},
++		{
++			"name": "release",
++			"inherits": "linux-base",
++			"displayName": "Release (Ninja)",
++			"binaryDir": "${sourceDir}/build",
++			"cacheVariables": {
++				"CMAKE_BUILD_TYPE": "Release"
++			}
++		}
++	],
++	"buildPresets": [
++		{
++			"name": "release",
++			"configurePreset": "release"
++		}
++	],
++	"testPresets": [
++		{
++			"name": "test-debug",
++			"configurePreset": "debug"
++		}
++	]
++}
+\ No newline at end of file
+diff --git a/README.md b/README.md
+index ff7221db7..d1c6fa0bb 100644
+--- a/README.md
++++ b/README.md
+@@ -6,6 +6,13 @@
+ 
+ <b>LLM inference in C/C++</b>
+ 
++# Personal notes
++
++Llamafile manages to use the GFX1103 by using LLamfile's tinyblas instead of HIPBLAS.
++
++https://github.com/ggerganov/llama.cpp/issues/6509#issuecomment-2048214695
++
++
+ [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+ [![Release](https://img.shields.io/github/v/release/ggml-org/llama.cpp?filter=v*&color=brightgreen)](https://github.com/ggml-org/llama.cpp/releases?q=tag:v0)
+ [![Nightly](https://img.shields.io/github/v/release/ggml-org/llama.cpp?label=nightly&filter=b*&color=orange)](https://github.com/ggml-org/llama.cpp/releases?q=b)
+diff --git a/bench.sh b/bench.sh
+new file mode 100755
+index 000000000..799dee625
+--- /dev/null
++++ b/bench.sh
+@@ -0,0 +1,8 @@
++#!/bin.sh
++# Tune Llama's parameters for max token generations
++# https://github.com/ggml-org/llama.cpp/blob/master/tools/llama-bench/README.md
++
++LLM="-hf unsloth/gemma-4-26B-A4B-it-GGUF:IQ3_XXS"
++
++llama-bench ${LLM} --device ROCm0 --n-cpu-moe 8 -ngl -1 -lm none
++#llama-bench ${LLM} --device Vulkan0 --n-cpu-moe 0,8,10 -ngl -1,20,30 -lm mmap,none -fa 0,1
+diff --git a/deb/llama-vscode.service b/deb/llama-vscode.service
+new file mode 100644
+index 000000000..e5d3b213e
+--- /dev/null
++++ b/deb/llama-vscode.service
+@@ -0,0 +1,18 @@
++[Unit]
++Description=LLM-assisted text completion for VS Code
++After=network.target
++
++[Service]
++Type=simple
++User=root
++WorkingDirectory=/tmp
++ExecStart=/usr/bin/llama-server --port 8084 --models-preset /usr/share/llm/models.ini
++Environment="GGML_CUDA_ENABLE_UNIFIED_MEMORY=1"
++Restart=always
++RestartSec=30
++StandardOutput=syslog
++StandardError=syslog
++SyslogIdentifier=%n
++
++[Install]
++WantedBy=multi-user.target
+diff --git a/deb/llama-vscode.socket b/deb/llama-vscode.socket
+new file mode 100644
+index 000000000..44cdf878e
+--- /dev/null
++++ b/deb/llama-vscode.socket
+@@ -0,0 +1,11 @@
++# https://0pointer.de/blog/projects/socket-activation.html
++[Unit]
++Description=Socket for llama-vscode service
++
++[Socket]
++# Only listen on localhost
++ListenStream=127.0.0.1:8012
++NoDelay=true
++
++[Install]
++WantedBy=sockets.target
+diff --git a/deb/mcp.service b/deb/mcp.service
+new file mode 100644
+index 000000000..2fdc1e7e6
+--- /dev/null
++++ b/deb/mcp.service
+@@ -0,0 +1,18 @@
++[Unit]
++Description=MCP servers for Large Language Models (LLM)
++After=network.target
++
++[Service]
++Type=simple
++User=root
++WorkingDirectory=/tmp
++ExecStart=uvx mcp-proxy --named-server-config /usr/share/llm/mcp_config.json --allow-origin "*" --port 8001 --stateless
++Environment="GGML_CUDA_ENABLE_UNIFIED_MEMORY=1"
++Restart=always
++RestartSec=30
++StandardOutput=syslog
++StandardError=syslog
++SyslogIdentifier=%n
++
++[Install]
++WantedBy=multi-user.target
+diff --git a/deb/postinst b/deb/postinst
+new file mode 100755
+index 000000000..2e87df5cd
+--- /dev/null
++++ b/deb/postinst
+@@ -0,0 +1,11 @@
++#!/bin/sh
++set -e
++
++GGUF_PATH=/usr/share/llm
++mkdir -p ${GGUF_PATH}
++#wget -q -c -P ${GGUF_PATH} https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf
++#wget -q -c -P ${GGUF_PATH} https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/mmproj-F16.gguf
++#wget -q -c -P ${GGUF_PATH} https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-UD-IQ2_XXS.gguf
++
++# Register as systemd service
++systemctl enable llama-vscode.service
+diff --git a/deb/prerm b/deb/prerm
+new file mode 100755
+index 000000000..e184aff8e
+--- /dev/null
++++ b/deb/prerm
+@@ -0,0 +1,7 @@
++#!/bin/sh
++set -e
++
++systemctl disable llama-vscode.service
++
++GGUF_PATH=/usr/share/llm
++#-rm ${GGUF_PATH}/*.gguf
+diff --git a/examples/batched/CMakeLists.txt b/examples/batched/CMakeLists.txt
+index 1d7c2a0f6..013704b21 100644
+--- a/examples/batched/CMakeLists.txt
++++ b/examples/batched/CMakeLists.txt
+@@ -1,5 +1,4 @@
+ set(TARGET llama-batched)
+ add_executable(${TARGET} batched.cpp)
+-install(TARGETS ${TARGET} RUNTIME)
+ target_link_libraries(${TARGET} PRIVATE llama-common llama ${CMAKE_THREAD_LIBS_INIT})
+ target_compile_features(${TARGET} PRIVATE cxx_std_17)
+diff --git a/gemma.sh b/gemma.sh
+new file mode 100755
+index 000000000..f38e8fedc
+--- /dev/null
++++ b/gemma.sh
+@@ -0,0 +1,17 @@
++#!/bin/sh
++PT=$( dirname "$0" )
++LLM_PT=/usr/share/llm
++
++# Other models:
++#LLM="-m ${LLM_PT}/gemma-4-E4B-it-Q4_K_M.gguf -mm ${LLM_PT}/mmproj-F16.gguf"
++#LLM="-m ${LLM_PT}/gemma-4-26B-A4B-it-UD-Q3_K_M.gguf -mm ${LLM_PT}/gemma-4-26B-mmproj-F16.gguf"
++#LLM="-m ${LLM_PT}/Qwen3-Coder-30B-A3B-Instruct-UD-IQ2_M.gguf"
++#LLM="-hf unsloth/flint-GGUF:UD-IQ2_XXS"
++
++if ! lsof -Pi :8001 -sTCP:LISTEN -t >/dev/null ; then
++    trap 'trap - SIGTERM && kill 0' SIGINT SIGTERM EXIT
++    uvx mcp-proxy --named-server-config ${PT}/mcp_config.json --allow-origin "*" --port 8001 --stateless &
++fi
++
++(sleep 5; firefox -new-tab "http://127.0.0.1:8084") &
++GGML_CUDA_ENABLE_UNIFIED_MEMORY=1 ${PT}/build/bin/llama-server --port 8084 --models-preset $PT/models.ini
+diff --git a/mcp_config.json b/mcp_config.json
+new file mode 100644
+index 000000000..6162c7a7e
+--- /dev/null
++++ b/mcp_config.json
+@@ -0,0 +1,49 @@
++{
++	"mcpServers": {
++		"time": {
++			"command": "uvx",
++			"args": ["mcp-server-time", "--local-timezone=Europe/Amsterdam"]
++		},
++		"fetch": {
++			"command": "uvx",
++			"args": ["mcp-server-fetch"]
++		},
++		"ddg-search": {
++			"command": "uvx",
++			"args": ["duckduckgo-mcp-server"]
++		},
++		"yahooFinance": {
++			"command": "uvx",
++			"args": ["--from", "git+https://github.com/Alex2Yang97/yahoo-finance-mcp", "yahoo-finance-mcp"]
++		},
++		"arxiv": {
++			"command": "uvx",
++			"args": ["arxiv-mcp-server"],
++			"disabled": true
++		},
++		"paper-search-mcp": {
++			"command": "uvx",
++			"args": ["--from", "git+https://github.com/openags/paper-search-mcp", "paper-search-mcp"],
++			"env": {
++				"PAPER_SEARCH_MCP_UNPAYWALL_EMAIL": "me@my.com",
++				"PAPER_SEARCH_MCP_CORE_API_KEY": "_KEY_",
++				"PAPER_SEARCH_MCP_SEMANTIC_SCHOLAR_API_KEY": "",
++				"PAPER_SEARCH_MCP_ZENODO_ACCESS_TOKEN": "_TOKEN_",
++				"PAPER_SEARCH_MCP_GOOGLE_SCHOLAR_PROXY_URL": "",
++				"PAPER_SEARCH_MCP_IEEE_API_KEY": "",
++				"PAPER_SEARCH_MCP_ACM_API_KEY": ""
++			},
++			"disabled": true
++		},
++		"polymarket": {
++			"command": "uvx",
++			"args": ["--from", "polymarket_mcp", "polymarket-mcp"]
++		},
++		"linkedin": {
++			"command": "uvx",
++			"args": ["linkedin-scraper-mcp@latest"],
++			"env": { "UV_HTTP_TIMEOUT": "300" },
++			"disabled": true
++		}
++	}
++}
+diff --git a/models.ini b/models.ini
+new file mode 100644
+index 000000000..de88f6775
+--- /dev/null
++++ b/models.ini
+@@ -0,0 +1,32 @@
++version = 1
++
++[*]
++jinja = true
++fa=on
++device=Vulkan0
++lv=2
++
++[Gemma 4]
++hf=unsloth/gemma-4-26B-A4B-it-GGUF:IQ3_XXS
++n-cpu-moe=20
++moe-cache-mib=8192
++spec-type=draft-mtp
++spec-draft-n-max=2
++
++[Gemma 4 (small)]
++hf=unsloth/gemma-4-E4B-it-GGUF:IQ4_XS
++spec-type=draft-mtp
++spec-draft-n-max=3
++
++[Qwen 3.8]
++hf=ukisai/Swift-1.5-Qwen3.8-27B-GSQ-RCO-GGUF:IQ3_XXS-mtp
++spec-type=draft-mtp
++spec-draft-n-max=2
++
++[Flint]
++hf=unsloth/flint-GGUF:UD-IQ2_XXS
++ctx-size=8192
++n-cpu-moe=20
++moe-cache-mib=8192
++spec-type=draft-mtp
++spec-draft-n-max=2
+-- 
+2.47.3
+

@@ -1,0 +1,49 @@
+From 9ce25a93d2fe1ce49e47b66a903e7496b4b6ac8e Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sun, 8 Nov 2026 20:56:48 +0100
+Subject: [PATCH] TheRock integration: Less hermetic
+
+---
+ build/rocm/rocm.bazelrc | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/build/rocm/rocm.bazelrc b/build/rocm/rocm.bazelrc
+index 106dd83cfd..81c44f6b7e 100644
+--- a/build/rocm/rocm.bazelrc
++++ b/build/rocm/rocm.bazelrc
+@@ -13,7 +13,7 @@ common:rocm --action_env=HIPCC_COMPILE_FLAGS_APPEND=--offload-compress
+ common:rocm --action_env=ROCM_VERSION
+ common:rocm --copt=-Wno-gnu-offsetof-extensions
+ common:rocm --copt=-Qunused-arguments
+-common:rocm --repo_env=TF_ROCM_AMDGPU_TARGETS="gfx900,gfx906,gfx908,gfx90a,gfx942,gfx950,gfx1010,gfx1011,gfx1012,gfx1030,gfx1031,gfx1032,gfx1033,gfx1034,gfx1035,gfx1036,gfx1100,gfx1101,gfx1102,gfx1103,gfx1150,gfx1151,gfx1152,gfx1153,gfx1200,gfx1201,gfx1250"
++#common:rocm --repo_env=TF_ROCM_AMDGPU_TARGETS="gfx900,gfx906,gfx908,gfx90a,gfx942,gfx950,gfx1010,gfx1011,gfx1012,gfx1030,gfx1031,gfx1032,gfx1033,gfx1034,gfx1035,gfx1036,gfx1100,gfx1101,gfx1102,gfx1103,gfx1150,gfx1151,gfx1152,gfx1153,gfx1200,gfx1201,gfx1250"
+ # Used for @xla//build_tools/rocm:parallel_gpu_execute
+ common:rocm --legacy_external_runfiles=true
+ 
+@@ -22,7 +22,9 @@ common:rocm_clang_local --noincompatible_enable_cc_toolchain_resolution
+ common:rocm_clang_local --@rules_ml_toolchain//common:enable_hermetic_cc=False
+ common:rocm_clang_local --repo_env USE_HERMETIC_CC_TOOLCHAIN=0
+ common:rocm_clang_local --crosstool_top=@local_config_rocm//crosstool:toolchain
+-common:rocm_clang_local --action_env=CLANG_COMPILER_PATH="/usr/lib/llvm-18/bin/clang" 
++common:rocm_clang_local --action_env=CLANG_COMPILER_PATH="/usr/lib/llvm-18/bin/clang"
++common:rocm_clang_local --action_env=CC="/usr/lib/llvm-18/bin/clang"
++common:rocm_clang_local --action_env=CXX="/usr/lib/llvm-18/bin/clang++"
+ 
+ # ROCm with hermetic toolchain from rules_ml_toolchain
+ common:rocm_clang_hermetic --config=rocm
+@@ -40,6 +42,12 @@ common:rocm_clang_hermetic_local_sysroot --@rules_ml_toolchain//cc/sysroots:use_
+ build:rocm_release_wheel --config=rocm_clang_hermetic
+ build:rocm_release_wheel --@local_config_rocm//rocm:rocm_path_type=link_only
+ 
++build:rocm_local_wheel --config=rocm_clang_local
++build:rocm_local_wheel --@rules_ml_toolchain//common:enable_rocm=True
++build:rocm_local_wheel --@rules_ml_toolchain//common:enable_cuda=False
++build:rocm_local_wheel --@rules_ml_toolchain//common:enable_sycl=False
++
++
+ test:rocm --test_timeout=920,2400,7200,9600
+ test:rocm --flaky_test_attempts=3
+ test:rocm --test_verbose_timeout_warnings
+-- 
+2.47.3
+

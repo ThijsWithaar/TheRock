@@ -12,6 +12,9 @@ RUN sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/de
 #	chmod a+x /usr/bin/repo
 
 ARG PKG_SYSDEPS="libdw-dev libbacktrace-dev python3-zstandard"
+ARG PKG_JAX="bazel-7.4.1 binutils-gold libxml2-dev patchelf clang-18 lld-18"
+ARG PKG_PYTORCH="python3-build python3-six libvulkan-dev glslc"
+# pytorch requires a newer python3-scikit-build-core, use pip3 for that
 
 RUN apt update && apt install --no-upgrade --no-install-recommends -y -qq \
 	curl git git-lfs file fakeroot rsync cpio build-essential cmake ninja-build ccache \
@@ -29,7 +32,7 @@ RUN apt update && apt install --no-upgrade --no-install-recommends -y -qq \
 	python3-sphinx python3-myst-parser python3-websockets python3-git python3-tqdm python3-joblib python3-boto3 \
 	python3-pyelftools debhelper-compat llvm jq \
 	ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev x265 fdkaac \
-	doxygen texinfo texlive bison flex libtool gettext ${PKG_SYSDEPS}
+	doxygen texinfo texlive bison flex libtool gettext ${PKG_SYSDEPS} ${PKG_JAX} ${PKG_PYTORCH} ${PKG_ACPP}
 
 RUN pip3 install --break-system-packages CppHeaderParser lit scikit-build-core
 

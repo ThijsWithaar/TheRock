@@ -1,0 +1,87 @@
+From c3d7ad22cdca1397b873a3b845764e96e0a32d10 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Fri, 6 Nov 2026 18:18:27 +0100
+Subject: [PATCH] TheRock build integration
+
+---
+ cmake/EnvVarForwarding.cmake    | 4 ++++
+ cmake/public/LoadHIP.cmake      | 3 ++-
+ tools/generate_torch_version.py | 4 ++--
+ version.txt                     | 2 +-
+ 4 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/cmake/EnvVarForwarding.cmake b/cmake/EnvVarForwarding.cmake
+index b86777475be..7b46ff155ea 100644
+--- a/cmake/EnvVarForwarding.cmake
++++ b/cmake/EnvVarForwarding.cmake
+@@ -137,6 +137,7 @@ set(_ENV_PASSTHROUGH
+   UBSAN_FLAGS
+   BLAS
+   WITH_BLAS
++  CMAKE_CUDA_COMPILER_LAUNCHER
+   CUDA_HOST_COMPILER
+   CUDA_NVCC_EXECUTABLE
+   CUDA_SEPARABLE_COMPILATION
+@@ -153,6 +154,7 @@ set(_ENV_PASSTHROUGH
+   MSVC_Z7_OVERRIDE
+   CAFFE2_USE_MSVC_STATIC_RUNTIME
+   CAFFE2_CUSTOM_PROTOC_EXECUTABLE
++  NUMA_DIR
+   Numa_INCLUDE_DIR
+   Numa_LIBRARIES
+   ONNX_ML
+@@ -160,12 +162,14 @@ set(_ENV_PASSTHROUGH
+   ATEN_THREADING
+   WERROR
+   OPENSSL_ROOT_DIR
++  ROCM_PATH
+   STATIC_DISPATCH_BACKEND
+   SELECTED_OP_LIST
+   TORCH_CUDA_ARCH_LIST
+   TORCH_XPU_ARCH_LIST
+   TRACING_BASED
+ )
++set(ROCM_SOURCE_DIR ${ROCM_PATH}) # For Kineto to find rocprofiler
+ 
+ # Low-priority aliases: if the canonical var is not set, use the alias.
+ set(_LOW_PRIORITY_ALIASES
+diff --git a/cmake/public/LoadHIP.cmake b/cmake/public/LoadHIP.cmake
+index 179a93d547a..9aee7203f54 100644
+--- a/cmake/public/LoadHIP.cmake
++++ b/cmake/public/LoadHIP.cmake
+@@ -273,8 +273,9 @@ if(PYTORCH_FOUND_HIP)
+   find_file(ROCM_VERSION_HEADER_PATH
+     NAMES rocm-core/rocm_version.h hip/hip_version.h
+     NO_DEFAULT_PATH
+-    PATHS ${ROCM_INCLUDE_DIRS}
++    PATHS ${ROCM_PATH}/include ${ROCM_INCLUDE_DIRS}
+   )
++  set(ROCM_VERSION_HEADER_PATH "${ROCM_PATH}/include/rocm-core/rocm_version.h")
+   if(ROCM_VERSION_HEADER_PATH MATCHES "rocm-core/rocm_version.h$")
+     set(ROCM_LIB_NAME "ROCM")
+   else()
+diff --git a/tools/generate_torch_version.py b/tools/generate_torch_version.py
+index cf4e02931a2..175a19e0daf 100644
+--- a/tools/generate_torch_version.py
++++ b/tools/generate_torch_version.py
+@@ -90,8 +90,8 @@ def get_torch_version(sha: str | None = None) -> str:
+         if sdist_version is None and sha != UNKNOWN:
+             if sha is None:
+                 sha = get_sha(pytorch_root)
+-            version += "+git" + sha[:7]
+-            origin += " and git commit"
++            #version += "+git" + sha[:7]
++            #origin += " and git commit"
+     # Validate that the version is PEP 440 compliant
+     parsed_version = Version(version)
+     if sdist_version:
+diff --git a/version.txt b/version.txt
+index c7ad7015238..68e69e405ee 100644
+--- a/version.txt
++++ b/version.txt
+@@ -1 +1 @@
+-2.15.0a0
++2.15.0
+-- 
+2.47.3
+

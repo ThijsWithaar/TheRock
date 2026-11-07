@@ -1,0 +1,182 @@
+diff --git a/.bazelrc b/.bazelrc
+index 22e9bf1733e..107a4016125 100644
+--- a/.bazelrc
++++ b/.bazelrc
+@@ -258,12 +258,12 @@ build:mkl_aarch64_threadpool --define=build_with_mkl_aarch64=true
+ build:mkl_aarch64_threadpool -c opt
+ 
+ # CUDA: This config refers to building CUDA op kernels with nvcc.
+-build:cuda --repo_env TF_NEED_CUDA=1
++build:cuda --repo_env TF_NEED_CUDA=0
+ build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
+ build:cuda --@local_config_cuda//:enable_cuda
+ # Default CUDA and CUDNN versions.
+-build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.5.1"
+-build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.3.0"
++build:cuda --repo_env=HERMETIC_CUDA_VERSION="12.2.0"
++build:cuda --repo_env=HERMETIC_CUDNN_VERSION="9.1.1"
+ # This flag is needed to include CUDA libraries.
+ build:cuda --@local_config_cuda//cuda:include_cuda_libs=true
+ 
+@@ -293,8 +293,8 @@ build:cuda_clang --linkopt="-lm"
+ 
+ # Set up compilation CUDA version and paths and use the CUDA Clang toolchain.
+ build:cuda_clang_official --config=cuda_clang
+-build:cuda_clang_official --repo_env=HERMETIC_CUDA_VERSION="12.5.1"
+-build:cuda_clang_official --repo_env=HERMETIC_CUDNN_VERSION="9.3.0"
++build:cuda_clang_official --repo_env=HERMETIC_CUDA_VERSION="12.2.0"
++build:cuda_clang_official --repo_env=HERMETIC_CUDNN_VERSION="9.1.1"
+ build:cuda_clang_official --action_env=CLANG_CUDA_COMPILER_PATH="/usr/lib/llvm-18/bin/clang"
+ build:cuda_clang_official --crosstool_top="@local_config_cuda//crosstool:toolchain"
+ 
+@@ -364,8 +364,8 @@ build:rocm_clang_official --host_linkopt="-fuse-ld=lld"
+ 
+ build:rocm_ci --config=rocm_clang_official
+ build:rocm_ci_hermetic --config=rocm_clang_official
+-build:rocm_ci_hermetic --repo_env="OS=ubuntu_22.04"
+-build:rocm_ci_hermetic --repo_env="ROCM_VERSION=6.2.0"
++build:rocm_ci_hermetic --repo_env="OS=debian_trixie"
++build:rocm_ci_hermetic --repo_env="ROCM_VERSION=6.4.0"
+ build:rocm_ci_hermetic --@local_config_rocm//rocm:use_rocm_hermetic_rpath=True
+ 
+ build:sycl --crosstool_top=@local_config_sycl//crosstool:toolchain
+diff --git a/WORKSPACE b/WORKSPACE
+index 445f974b094..e42663c6922 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -43,6 +43,7 @@ python_init_repositories(
+         "3.10": "//:requirements_lock_3_10.txt",
+         "3.11": "//:requirements_lock_3_11.txt",
+         "3.12": "//:requirements_lock_3_12.txt",
++        "3.13": "//:requirements_lock_3_13.txt",
+     },
+ )
+ 
+diff --git a/build_rocm_python3 b/build_rocm_python3
+index 6f4d977b6b4..feda34c1488 100755
+--- a/build_rocm_python3
++++ b/build_rocm_python3
+@@ -46,6 +46,7 @@ else
+     RESOURCE_OPTION=""
+ fi
+ 
++PIP_OPTIONS="--break-system-packages --upgrade"
+ if [ -f /usertools/rocm.bazelrc ]; then
+ 	# Use the bazelrc files in /usertools if available
+     	TF_PKG_LOC=bazel-bin/tensorflow/tools/pip_package/wheel_house
+@@ -55,13 +56,13 @@ if [ -f /usertools/rocm.bazelrc ]; then
+         export project_name=tf_nightly_rocm
+ 		python3 tensorflow/tools/ci_build/update_version.py --nightly --rocm_version &&
+ 		bazel --bazelrc=/usertools/rocm.bazelrc build $RESOURCE_OPTION --config=rocm --repo_env=WHEEL_NAME=tf_nightly_rocm --action_env=project_name=tf_nightly_rocm --action_env=TF_PYTHON_VERSION=$PYTHON_VERSION tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tf_nightly_rocm*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tf_nightly_rocm*.whl
+ 	else
+ 		# Remove any previous builds and build release
+ 	        rm -f $TF_PKG_LOC/tensorflow*.whl
+ 		python3 tensorflow/tools/ci_build/update_version.py --rocm_version &&
+ 		bazel --bazelrc=/usertools/rocm.bazelrc build $RESOURCE_OPTION --config=rocm --repo_env=WHEEL_NAME=tensorflow_rocm --action_env=project_name=tensorflow_rocm --action_env=TF_PYTHON_VERSION=$PYTHON_VERSION tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tensorflow*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tensorflow*.whl
+ 	fi
+ else
+ 	# Legacy style: run configure then build
+@@ -71,11 +72,11 @@ else
+ 		# Remove any previous builds and build nightly
+ 	        rm -f $TF_PKG_LOC/tf_nightly_rocm*.whl
+ 		bazel build $RESOURCE_OPTION --config=opt --config=rocm --repo_env=WHEEL_NAME=tf_nightly_rocm --action_env=project_name=tf_nightly_rocm //tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tf_nightly_rocm*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tf_nightly_rocm*.whl
+ 	else
+ 		# Remove any previous builds and build release
+ 	        rm -f $TF_PKG_LOC/tensorflow*.whl
+ 		bazel build $RESOURCE_OPTION --config=opt --config=rocm --repo_env=WHEEL_NAME=tensorflow_rocm --action_env=project_name=tensorflow_rocm //tensorflow/tools/pip_package:wheel --verbose_failures &&
+-		pip3 install --upgrade $TF_PKG_LOC/tensorflow*.whl
++		pip3 install ${PIP_OPTIONS} $TF_PKG_LOC/tensorflow*.whl
+ 	fi
+ fi
+diff --git a/tensorflow/python/eager/pywrap_tensor.cc b/tensorflow/python/eager/pywrap_tensor.cc
+index 5bfa389e92a..da572f78a4d 100644
+--- a/tensorflow/python/eager/pywrap_tensor.cc
++++ b/tensorflow/python/eager/pywrap_tensor.cc
+@@ -47,6 +47,11 @@ limitations under the License.
+ #include "tensorflow/python/lib/core/pybind11_status.h"
+ #include "tensorflow/python/lib/core/safe_pyobject_ptr.h"
+ 
++#if PY_VERSION_HEX >= 0x030D0000  // Python 3.13
++#define Py_BUILD_CORE
++#include "python3.13/internal/pycore_modsupport.h"
++#endif
++
+ // forward declare
+ struct EagerTensor;
+ namespace tensorflow {
+@@ -873,8 +878,10 @@ static int EagerTensor_traverse(PyObject* self, visitproc visit, void* arg) {
+ #if PY_VERSION_HEX < 0x030C0000  // < Python 3.12
+   PyObject*& dict = *_PyObject_GetDictPtr(self);
+   Py_VISIT(dict);
+-#else
++#elif PY_VERSION_HEX < 0x030D0000  // < Python 3.13
+   _PyObject_VisitManagedDict(self, visit, arg);
++#else
++  PyObject_VisitManagedDict(self, visit, arg);
+ #endif  // PY_VERSION_HEX < 0x030C0000
+   Py_VISIT(((EagerTensor*)self)->handle_data);
+   Py_VISIT(((EagerTensor*)self)->tensor_shape);
+@@ -896,8 +903,10 @@ extern int EagerTensor_clear(PyObject* self) {
+ #if PY_VERSION_HEX < 0x030C0000  // < Python 3.12
+   PyObject*& dict = *_PyObject_GetDictPtr(self);
+   Py_CLEAR(dict);
+-#else
++#elif PY_VERSION_HEX < 0x030D0000  // < Python 3.13
+   _PyObject_ClearManagedDict(self);
++#else
++  PyObject_ClearManagedDict(self);
+ #endif  // PY_VERSION_HEX < 0x030C0000
+ 
+   Py_CLEAR(((EagerTensor*)self)->handle_data);
+diff --git a/tensorflow/workspace3.bzl b/tensorflow/workspace3.bzl
+index 0818a86d302..a5c41a582bf 100644
+--- a/tensorflow/workspace3.bzl
++++ b/tensorflow/workspace3.bzl
+@@ -1,14 +1,24 @@
+ """TensorFlow workspace initialization. Consult the WORKSPACE on how to use it."""
+ 
+ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
++load("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
+ load("//third_party:repo.bzl", "tf_vendored")
+ load("//third_party/llvm:workspace.bzl", llvm = "repo")
+ load("//third_party/tf_runtime:workspace.bzl", tf_runtime = "repo")
+ 
+ def workspace():
+-    tf_vendored(name = "local_xla", relpath = "third_party/xla")
++    #tf_vendored(name = "local_xla", relpath = "third_party/xla")
+     tf_vendored(name = "local_tsl", relpath = "third_party/xla/third_party/tsl")
+ 
++    # For development, one often wants to make changes to the TF repository as well
++    # as the JAX repository. You can override the pinned repository above with a
++    # local checkout by:
++    # commenting out the tf_vendored above and uncommenting the following:
++    native.local_repository(
++       name = "local_xla",
++       path = "../xla",
++    )
++
+     http_archive(
+         name = "io_bazel_rules_closure",
+         sha256 = "5b00383d08dd71f28503736db0500b6fb4dda47489ff5fc6bed42557c07c6ba9",
+diff --git a/third_party/nccl/archive.BUILD b/third_party/nccl/archive.BUILD
+index 61d4975424e..3017a15d499 100644
+--- a/third_party/nccl/archive.BUILD
++++ b/third_party/nccl/archive.BUILD
+@@ -22,9 +22,9 @@ exports_files(["LICENSE.txt"])
+ 
+ NCCL_MAJOR = 2
+ 
+-NCCL_MINOR = 25
++NCCL_MINOR = 22
+ 
+-NCCL_PATCH = 1
++NCCL_PATCH = 3
+ 
+ NCCL_VERSION = NCCL_MAJOR * 10000 + NCCL_MINOR * 100 + NCCL_PATCH  # e.g., 21605
+ 

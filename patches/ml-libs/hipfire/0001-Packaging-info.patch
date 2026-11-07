@@ -1,0 +1,51 @@
+From 7e08ed86620d1d43bcd034bb3aef5d2c387b6586 Mon Sep 17 00:00:00 2001
+From: Thijs Withaar <thijs.withaar@gmail.com>
+Date: Sat, 7 Nov 2026 08:26:54 +0100
+Subject: [PATCH] Packaging info
+
+---
+ crates/hipfire-cli/Cargo.toml    | 2 ++
+ crates/hipfire-daemon/Cargo.toml | 1 +
+ crates/hipfire-tui/Cargo.toml    | 2 ++
+ 3 files changed, 5 insertions(+)
+
+diff --git a/crates/hipfire-cli/Cargo.toml b/crates/hipfire-cli/Cargo.toml
+index b583bd782..b9d9ab379 100644
+--- a/crates/hipfire-cli/Cargo.toml
++++ b/crates/hipfire-cli/Cargo.toml
+@@ -4,6 +4,8 @@ version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+ build = "build.rs"
++description = "hipfire command line interface"
++authors = ["https://hipfire.dev"]
+ 
+ [[bin]]
+ name = "hipfire"
+diff --git a/crates/hipfire-daemon/Cargo.toml b/crates/hipfire-daemon/Cargo.toml
+index 8f7b5c8a9..ca5becb7e 100644
+--- a/crates/hipfire-daemon/Cargo.toml
++++ b/crates/hipfire-daemon/Cargo.toml
+@@ -1,5 +1,6 @@
+ [package]
+ name = "hipfire-daemon"
++authors = ["https://hipfire.dev"]
+ version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+diff --git a/crates/hipfire-tui/Cargo.toml b/crates/hipfire-tui/Cargo.toml
+index d044d816c..40271de88 100644
+--- a/crates/hipfire-tui/Cargo.toml
++++ b/crates/hipfire-tui/Cargo.toml
+@@ -3,6 +3,8 @@ name = "hipfire-tui"
+ version.workspace = true
+ edition.workspace = true
+ license.workspace = true
++description = "hipfire LLM text interface"
++authors = ["https://hipfire.dev"]
+ 
+ [dependencies]
+ anyhow.workspace = true
+-- 
+2.47.3
+

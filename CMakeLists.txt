@@ -513,6 +513,48 @@ add_subdirectory(media-libs)
 # storage-libs (hipfile) must be added before profiler: rocprofiler-sdk performs
 # optional find_package(hipfile) for hipFILE trace feature detection.
 add_subdirectory(storage-libs)
+
+therock_cmake_subproject_declare(acpp
+  USE_DIST_AMDGPU_TARGETS
+  EXTERNAL_SOURCE_DIR "compiler/AdaptiveCpp"
+  BINARY_DIR "acpp"
+  CMAKE_ARGS
+	-DACPP_EXPERIMENTAL_LLVM=ON
+#      -DLLVM_DIR=${THEROCK_BINARY_DIR}/dist/rocm/lib/cmake/llvm
+#      -DCLANG_EXECUTABLE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/bin/clang++
+#      -DCLANG_INCLUDE_PATH=${THEROCK_BINARY_DIR}/dist/rocm/lib/llvm/include
+##	  -DLLVMSPIRV_BRANCH=llvm_release_200
+
+	-DLLVM_DIR=/usr/lib/cmake
+	-DLLVM_REQUIRES_RTTI=ON
+	-DDLLVM_ENABLE_RTTI=ON
+	-DCLANG_EXECUTABLE_PATH=/usr/bin/clang-18
+	-DCLANG_INCLUDE_PATH=/usr/include/llvm-18
+
+	-DROCM_DEVICE_LIBS_PATH=${THEROCK_BINARY_DIR}/compiler/amd-llvm/stage/lib/llvm/amdgcn/bitcode/
+	-DACPP_LLC_PATH=/usr/bin/llc
+	-DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm
+	-DHIP_PLATFORM="amd"
+	-DLibElf_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DNUMA_DIR=${CMAKE_SOURCE_DIR}/cmake/finders
+	-DCMAKE_FIND_ROOT_PATH=/usr/include
+	-DLLVM_EXTERNAL_SPIRV_LLVM_TRANSLATOR_SOURCE_DIR="${THEROCK_SOURCE_DIR}/compiler/spirv-llvm-translator"
+#  COMPILER_TOOLCHAIN
+#    amd-hip
+  BUILD_DEPS
+	hip-clr
+	amd-comgr
+	ROCR-Runtime
+	rocm-cmake
+    rocm-core
+	amd-llvm
+  RUNTIME_DEPS
+	amd-llvm
+)
+# therock_cmake_subproject_glob_c_sources(acpp SUBDIRS .)
+# therock_cmake_subproject_activate(acpp)
+# therock_provide_artifact(acpp TARGET_NEUTRAL DESCRIPTOR compiler/artifact-acpp.toml COMPONENTS bin dev)
+
 # Note that rocprofiler-register is in base and is what higher level clients
 # depend on. The profiler itself is independent.
 add_subdirectory(profiler)
@@ -528,6 +570,72 @@ add_subdirectory(ml-libs)
 if(THEROCK_BUILD_TESTING)
   add_subdirectory(examples)
 endif()
+
+string(REPLACE ";" "," GPU_TARGETS_COMMAS "${THEROCK_AMDGPU_TARGETS}")
+add_custom_command(
+  COMMENT "Building JAX"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/jax.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/jax
+  COMMAND mkdir -p ${THEROCK_BINARY_DIR}/jax.build
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/ml-libs/jax/build/build.py build --wheels=jax,jaxlib,jax-rocm-plugin,jax-rocm-pjrt --rocm_amdgpu_targets=${GPU_TARGETS_COMMAS} --bazel_startup_options="--bazelrc=build/rocm/rocm.bazelrc" --bazel_options=--config=rocm_release_wheel --python_version=3.13 --output_path=${THEROCK_BINARY_DIR}/jax.build --bazel_options=--repo_env=ML_WHEEL_TYPE=release --rocm_version=${ROCM_VERSION}
+  COMMAND touch ${THEROCK_BINARY_DIR}/jax.state
+)
+add_custom_target(therock-jax ALL DEPENDS ${THEROCK_BINARY_DIR}/jax.state)
+
+add_custom_command(
+  COMMENT "Building PyTorch"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/pytorch.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/pytorch
+  COMMAND git submodule update --init --recursive
+  COMMAND python3 tools/amd_build/build_amd.py
+  COMMAND CMAKE_CUDA_COMPILER_LAUNCHER=ccache NUMA_DIR=${CMAKE_SOURCE_DIR}/cmake/finders ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm PYTORCH_ROCM_ARCH="${THEROCK_AMDGPU_TARGETS}" USE_ROCM=ON USE_VULKAN=ON USE_CUDA=0 python3 -m build --wheel --no-isolation
+  COMMAND touch ${THEROCK_BINARY_DIR}/pytorch.state
+)
+add_custom_target(therock-torch ALL DEPENDS ${THEROCK_BINARY_DIR}/pytorch.state)
+
+
+add_custom_command(
+  COMMENT "Building HIPfire"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/hipfire.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/hipfire
+  COMMAND cargo install cargo-deb
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cargo deb -p hipfire-cli
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cargo deb -p hipfire-daemon
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cargo deb -p hipfire-tui
+  COMMAND touch ${THEROCK_BINARY_DIR}/hipfire.state
+)
+add_custom_target(therock-hipfire ALL DEPENDS ${THEROCK_BINARY_DIR}/hipfire.state)
+
+
+add_custom_command(
+  COMMENT "Building AdaptiveC++"
+  DEPENDS therock-dist
+  OUTPUT ${THEROCK_BINARY_DIR}/acpp_external.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/compiler/AdaptiveCpp
+  COMMAND cmake -B${THEROCK_BINARY_DIR}/acpp.build -DROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm -DCPACK_GENERATOR=DEB -DGPU_TARGETS=${GPU_TARGETS_COMMAS} -DCMAKE_CXX_COMPILER=clang++-19 -DCLANG_INCLUDE_PATH=/usr/include/clang/19/include
+  COMMAND cmake --build ${THEROCK_BINARY_DIR}/acpp.build --target package
+  COMMAND touch ${THEROCK_BINARY_DIR}/acpp_external.state
+)
+add_custom_target(therock-acpp ALL DEPENDS ${THEROCK_BINARY_DIR}/acpp_external.state)
+
+
+add_custom_command(
+  COMMENT "Building Llama.C++"
+  DEPENDS therock-dist therock-acpp
+  OUTPUT ${THEROCK_BINARY_DIR}/llama_cpp.state
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/ml-libs/llama.cpp
+  COMMAND ROCM_PATH=${THEROCK_BINARY_DIR}/dist/rocm cmake -B${THEROCK_BINARY_DIR}/llama.cpp.build -DCPACK_GENERATOR=DEB -DCMAKE_CXX_COMPILER=${THEROCK_BINARY_DIR}/dist/rocm/bin/hipcc
+  #COMMAND cmake --build ${THEROCK_BINARY_DIR}/llama.cpp.build --target package
+  #COMMAND touch ${THEROCK_BINARY_DIR}/llama_cpp.state
+)
+#add_custom_target(therock-llama-cpp ALL DEPENDS ${THEROCK_BINARY_DIR}/llama_cpp.state)
+
+
+# ToDo: tensorflow, onnx
+
 
 ################################################################################
 # Testing
@@ -579,7 +687,20 @@ add_custom_command(
   COMMAND ${CMAKE_SOURCE_DIR}/build_tools/packaging/linux/build_package.py --artifacts-dir ${THEROCK_BINARY_DIR}/artifacts --dest-dir ${APT_DIR}/pool/main --pkg-type DEB --rocm-version ${ROCM_VERSION} --version-suffix $ENV{BUILD_ID} --target ${THEROCK_AMDGPU_FAMILIES}
   COMMAND ${CMAKE_COMMAND} -E touch ${THEROCK_BINARY_DIR}/artifact-debs.state
 )
-add_custom_target(therock-deb ALL DEPENDS ${THEROCK_BINARY_DIR}/artifact-debs.state)
+
+add_custom_command(
+  COMMENT "Build Extra DEB packages"
+  DEPENDS ${THEROCK_BINARY_DIR}/artifact-debs.state therock-jax therock-torch therock-acpp therock-hipfire
+  OUTPUT ${THEROCK_BINARY_DIR}/ppa-debs.state
+  COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${THEROCK_BINARY_DIR}/jax.build/*.whl
+  #COMMAND echo ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/tensorflow/bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl
+  COMMAND ${TOOL_DIR}/create_deb_from_wheel.py ${APT_DIR}/pool/main ${MLLIB_DIR}/pytorch/dist/*.whl
+  COMMAND cp ${THEROCK_BINARY_DIR}/acpp.build/*.deb ${APT_DIR}/pool/main
+  COMMAND cp ${MLLIB_DIR}/hipfire/target/debian/*.deb ${APT_DIR}/pool/main
+  #COMMAND cp ${MLLIB_DIR}/llama.cpp/build/llama.cpp*.deb ${APT_DIR}/pool/main
+  COMMAND touch ${THEROCK_BINARY_DIR}/ppa-debs.state
+)
+add_custom_target(therock-deb ALL DEPENDS ${THEROCK_BINARY_DIR}/ppa-debs.state)
 
 add_custom_command(
   COMMENT "Creating GPG keys"
@@ -611,7 +732,7 @@ add_custom_command(
 )
 add_custom_target(therock-ppa-sync DEPENDS ${THEROCK_BINARY_DIR}/ppa-rsync.state)
 
-add_custom_target(therock-ppa
+add_custom_target(therock-ppa ALL
   DEPENDS ${APT_DIR}/dists/${APT_SUITE}/Release.gpg ${THEROCK_BINARY_DIR}/ppa-debs.state therock-deb
 )
 
